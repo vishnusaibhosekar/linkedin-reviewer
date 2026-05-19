@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Loader2Icon } from "lucide-react";
 import { Toaster, toast } from "sonner";
+import Logo from "@/app/components/Logo";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -37,12 +38,17 @@ export default function LoginPage() {
             <div className="flex items-center justify-center min-h-screen p-4">
                 <div className="w-full max-w-md">
                     <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-8 space-y-6">
+                        {/* Logo */}
+                        <div className="flex justify-center">
+                            <Logo size="lg" showText={false} href="/" />
+                        </div>
+
                         {/* Header */}
                         <div className="text-center space-y-2">
-                            <h1 className="text-3xl font-bold text-foreground">
+                            <h1 className="text-3xl font-bold text-[#172B4D]">
                                 Get Your LinkedIn Score
                             </h1>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-[#6B778C]">
                                 Sign in to analyze and improve your LinkedIn profile
                             </p>
                         </div>
