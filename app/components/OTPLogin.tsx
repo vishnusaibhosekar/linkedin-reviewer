@@ -110,7 +110,6 @@ function OtpLogin() {
                 toast.success("Login successful! Redirecting...");
                 setTimeout(() => router.replace("/"), 1000);
             } catch (error) {
-                console.log(error);
 
                 setError("Failed to verify OTP. Please check the OTP.");
                 toast.error("Failed to verify OTP. Please check the code.");
@@ -142,7 +141,6 @@ function OtpLogin() {
                 setConfirmationResult(confirmationResult);
                 toast.success("OTP sent successfully!");
             } catch (err: any) {
-                console.log(err);
                 setResendCountdown(0);
 
                 if (err.code === "auth/invalid-phone-number") {

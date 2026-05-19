@@ -1,0 +1,6 @@
+[auth]
+allowed_redirect_urls = [
+  "http://localhost:3000/auth/callback",
+  "http://localhost:3000/dashboard",
+  "http://localhost:3000/auth/login"
+]
