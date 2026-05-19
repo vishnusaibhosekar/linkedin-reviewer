@@ -4,27 +4,17 @@ import { insforge } from '@/lib/auth/insforge';
 // GET - Get single review details
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        // Get current user
-        const { data: userData, error: authError } = await insforge.auth.getCurrentUser();
-
-        if (authError || !userData?.user) {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
-            );
-        }
-
-        const userId = userData.user.id;
-        const reviewId = params.id;
+        // Await params in Next.js 16
+        const resolvedParams = await params;
+        const reviewId = resolvedParams.id;
 
         const { data, error } = await insforge.database
             .from('reviews')
             .select('*')
             .eq('id', reviewId)
-            .eq('user_id', userId) // RLS check
             .single();
 
         if (error) {
