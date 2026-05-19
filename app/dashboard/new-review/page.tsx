@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,8 @@ export default function NewReviewPage() {
     const { user } = useAuth();
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
+    const [isPreparingReview, setIsPreparingReview] = useState(false);
+    const [prepareStatus, setPrepareStatus] = useState<string>('');
 
     const [formData, setFormData] = useState({
         fullName: '',
@@ -36,6 +37,12 @@ export default function NewReviewPage() {
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [showTooltip, setShowTooltip] = useState<string | null>(null);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+    // Use ref to track base64 data synchronously (avoid async state update issues)
+    const base64ScreenshotsRef = useRef<{ [key: string]: string }>({});
+
+    // Holds the in-flight upload promise so payment success can await it
+    const uploadResultRef = useRef<Promise<{ pdfPath: string; screenshotPaths: string[] }> | null>(null);
 
     const screenshotFields = [
         {
@@ -118,13 +125,13 @@ export default function NewReviewPage() {
     };
 
     const handlePdfUpload = async (file: File): Promise<string> => {
-        const formData = new FormData();
-        formData.append('file', file);
+        const uploadForm = new FormData();
+        uploadForm.append('file', file);
 
         const response = await fetch('/api/upload/pdf', {
             method: 'POST',
-            body: formData,
-            credentials: 'include'  // Include auth cookies
+            body: uploadForm,
+            credentials: 'include'
         });
 
         const result = await response.json();
@@ -137,15 +144,23 @@ export default function NewReviewPage() {
     };
 
     const handleScreenshotUpload = async (file: File, slotName: string): Promise<string> => {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('slot', slotName);
+        const uploadForm = new FormData();
+        uploadForm.append('file', file);
+        uploadForm.append('slot', slotName);
 
-        const response = await fetch('/api/upload/screenshots', {
-            method: 'POST',
-            body: formData,
-            credentials: 'include'  // Include auth cookies
-        });
+        // Convert to base64 for AI processing (run concurrently with upload)
+        const [response, base64] = await Promise.all([
+            fetch('/api/upload/screenshots', {
+                method: 'POST',
+                body: uploadForm,
+                credentials: 'include'
+            }),
+            new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(file);
+            })
+        ]);
 
         const result = await response.json();
 
@@ -153,64 +168,27 @@ export default function NewReviewPage() {
             throw new Error(result.error || `${slotName} upload failed`);
         }
 
+        // Store in ref for synchronous access by payment success handler
+        base64ScreenshotsRef.current[slotName] = base64;
+
         return result.path;
     };
 
-    const handleSubmit = async () => {
-        setLoading(true);
-        try {
-            // 1. Upload PDF
-            toast.info('Uploading PDF...');
-            const pdfPath = await handlePdfUpload(formData.pdfFile!);
+    // Uploads PDF + all 4 screenshots in parallel — called as soon as modal opens
+    const startUploads = (): Promise<{ pdfPath: string; screenshotPaths: string[] }> => {
+        const screenshotKeys = ['profileBanner', 'endorsements', 'recommendations', 'activityPosts'] as const;
 
-            // 2. Upload Screenshots
-            toast.info('Uploading screenshots...');
-            const screenshotPaths: string[] = [];
-            const screenshotKeys = ['profileBanner', 'endorsements', 'recommendations', 'activityPosts'] as const;
-            const screenshotLabels = ['Profile & Banner', 'Skills & Endorsements', 'Recommendations', 'Activity & Posts'];
+        const pdfUpload = handlePdfUpload(formData.pdfFile!);
 
-            for (let i = 0; i < screenshotKeys.length; i++) {
-                const key = screenshotKeys[i];
-                const label = screenshotLabels[i];
-                const file = formData.screenshots[key];
-                if (file) {
-                    toast.info(`Uploading ${label}...`);
-                    const path = await handleScreenshotUpload(file, key);
-                    screenshotPaths.push(path);
-                }
-            }
+        // All 4 screenshots upload in parallel
+        const screenshotUploads = Promise.all(
+            screenshotKeys.map(key => handleScreenshotUpload(formData.screenshots[key]!, key))
+        );
 
-            // 3. Create Review
-            toast.info('Creating review...');
-            const reviewResponse = await fetch('/api/reviews', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    userId: user?.id,
-                    fullName: formData.fullName,
-                    professionalStatus: formData.professionalStatus,
-                    workExperience: formData.workExperience,
-                    currentJobTitle: formData.currentJobTitle,
-                    purpose: formData.purpose,
-                    linkedinUrl: formData.linkedinUrl,
-                    pdfPath: pdfPath,
-                    screenshotPaths: screenshotPaths
-                }),
-            });
-
-            const reviewResult = await reviewResponse.json();
-
-            if (!reviewResponse.ok) {
-                throw new Error(reviewResult.error || 'Failed to create review');
-            }
-
-            toast.success('Review submitted successfully!');
-            router.push(`/dashboard/review/${reviewResult.reviewId}/processing`);
-        } catch (error: any) {
-            toast.error(error.message || 'Something went wrong');
-        } finally {
-            setLoading(false);
-        }
+        return Promise.all([pdfUpload, screenshotUploads]).then(([pdfPath, screenshotPaths]) => ({
+            pdfPath,
+            screenshotPaths
+        }));
     };
 
     const handleCancel = () => {
@@ -222,6 +200,9 @@ export default function NewReviewPage() {
 
         if (hasData) {
             if (window.confirm('Are you sure you want to cancel? All entered information will be lost.')) {
+                // Clear sessionStorage
+                sessionStorage.removeItem('new_review_pdf');
+                sessionStorage.removeItem('new_review_screenshots');
                 router.push('/dashboard');
             }
         } else {
@@ -229,25 +210,77 @@ export default function NewReviewPage() {
         }
     };
 
-    const handlePayAndSubmit = async () => {
+    const handlePayAndSubmit = () => {
+        // Reset base64 ref for fresh uploads
+        base64ScreenshotsRef.current = {};
+        // Kick off uploads immediately in the background
+        uploadResultRef.current = startUploads();
+        // Open modal — user interacts with payment while uploads run
         setShowPaymentModal(true);
     };
 
     const handlePaymentSuccess = async () => {
-        // Now submit the review after successful payment
-        await handleSubmit();
+        setShowPaymentModal(false);
+        setIsPreparingReview(true);
+        setPrepareStatus('Finalising your uploads...');
+
+        try {
+            // Await the upload promise (likely already resolved by now)
+            const { pdfPath, screenshotPaths } = await uploadResultRef.current!;
+
+            setPrepareStatus('Creating your review...');
+
+            // Create review record in DB
+            const reviewResponse = await fetch('/api/reviews', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: user?.id,
+                    fullName: formData.fullName,
+                    professionalStatus: formData.professionalStatus,
+                    workExperience: formData.workExperience,
+                    currentJobTitle: formData.currentJobTitle,
+                    purpose: formData.purpose,
+                    linkedinUrl: formData.linkedinUrl,
+                    pdfPath,
+                    screenshotPaths
+                }),
+            });
+
+            const reviewResult = await reviewResponse.json();
+
+            if (!reviewResponse.ok) {
+                throw new Error(reviewResult.error || 'Failed to create review');
+            }
+
+            // Save base64 screenshots for the processing page AI call
+            // Isolated try/catch — a QuotaExceededError must NOT block the redirect
+            try {
+                sessionStorage.setItem(
+                    `review_${reviewResult.reviewId}_screenshots`,
+                    JSON.stringify(base64ScreenshotsRef.current)
+                );
+            } catch (storageError) {
+                console.warn('sessionStorage quota exceeded — screenshots will be re-fetched from storage:', storageError);
+            }
+
+            router.push(`/dashboard/review/${reviewResult.reviewId}/processing`);
+        } catch (error: any) {
+            setIsPreparingReview(false);
+            toast.error(error.message || 'Something went wrong. Please try again.');
+        }
     };
 
-    // Show loading overlay when processing
-    if (loading) {
+    // Full-screen overlay shown between modal close and redirect
+    if (isPreparingReview) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-50 flex items-center justify-center">
+            <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-50 flex items-center justify-center px-4">
                 <div className="text-center">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#0052CC] mb-6">
-                        <Loader2 className="w-8 h-8 text-white animate-spin" />
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#0052CC] mb-6">
+                        <Loader2 className="w-10 h-10 text-white animate-spin" />
                     </div>
-                    <h2 className="text-2xl font-semibold text-[#172B4D] mb-2">Processing Your Review</h2>
-                    <p className="text-[#6B778C]">Our AI is analyzing your LinkedIn profile to unlock your optimization potential...</p>
+                    <h2 className="text-2xl font-semibold text-[#172B4D] mb-2">Preparing Your Review</h2>
+                    <p className="text-[#6B778C]">{prepareStatus}</p>
                 </div>
             </div>
         );
@@ -652,20 +685,10 @@ export default function NewReviewPage() {
                             </Button>
                             <Button
                                 onClick={handlePayAndSubmit}
-                                disabled={loading}
                                 className="flex-1 h-11 text-base"
                             >
-                                {loading ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                        Processing...
-                                    </>
-                                ) : (
-                                    <>
-                                        Pay & Get Review
-                                        <CheckCircle className="w-4 h-4 ml-2" />
-                                    </>
-                                )}
+                                Pay & Get Review
+                                <CheckCircle className="w-4 h-4 ml-2" />
                             </Button>
                         </div>
                     </div>
