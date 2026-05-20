@@ -76,16 +76,7 @@ export async function POST(request: NextRequest) {
 // GET - List user's reviews
 export async function GET(request: NextRequest) {
     try {
-        // Get current user
-        const { data: userData, error: authError } = await insforge.auth.getCurrentUser();
-
-        if (authError || !userData?.user) {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
-            );
-        }
-
+        // RLS policy filters reviews by auth.uid() — no manual auth check needed
         const { data, error } = await insforge.database
             .from('reviews')
             .select('id, overall_score, score_band, status, created_at, full_name, professional_status')
