@@ -63,26 +63,29 @@ export default function AuthCallbackPage() {
                 }
 
                 // If no code in URL, SDK might have auto-handled it
-                // Check if user is already authenticated
-                const { data: userData, error: userError } = await insforge.auth.getCurrentUser();
+                // Check if user is already authenticated (with retries for race condition)
+                const waitForAuth = async (): Promise<boolean> => {
+                    for (let i = 0; i < 5; i++) {
+                        const { data: userData, error: userError } = await insforge.auth.getCurrentUser();
+                        if (userData?.user) {
+                            return true;
+                        }
+                        // Wait before retrying (except on last attempt)
+                        if (i < 4) {
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
+                    }
+                    return false;
+                };
 
-                if (userData?.user) {
+                const isAuthenticated = await waitForAuth();
+
+                if (isAuthenticated) {
                     setStatus("success");
                     toast.success("Login successful! Redirecting to dashboard...");
-                    // Wait for AuthContext to hydrate before redirecting
-                    const waitForAuth = async () => {
-                        for (let i = 0; i < 20; i++) {
-                            const { data: userData } = await insforge.auth.getCurrentUser();
-                            if (userData?.user) {
-                                break;
-                            }
-                            await new Promise(resolve => setTimeout(resolve, 100));
-                        }
-                        router.push("/dashboard");
-                    };
-                    await waitForAuth();
+                    router.push("/dashboard");
                 } else {
-                    console.error('[Callback] No user found after callback');
+                    console.error('[Callback] No user found after callback with retries');
                     setStatus("error");
                     toast.error("Authentication failed. Please try again.");
                     setTimeout(() => router.push("/auth/login"), 2000);
