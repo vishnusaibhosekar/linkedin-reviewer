@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
             purpose,
             linkedinUrl,
             pdfPath,
-            screenshotPaths
+            screenshotPaths,
+            paymentStatus = 'pending'
         } = body;
 
         // Validation
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
             .insert({
                 user_id: userId,
                 status: 'pending',
+                payment_status: paymentStatus,
                 full_name: fullName,
                 professional_status: professionalStatus,
                 work_experience: workExperience,

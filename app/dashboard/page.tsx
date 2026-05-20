@@ -21,6 +21,7 @@ interface Review {
 interface RewriteOrder {
     id: string;
     status: string;
+    payment_status: string;
     created_at: string;
     due_date: string;
     deliverable_path: string | null;
@@ -54,7 +55,11 @@ export default function DashboardPage() {
             const res = await fetch('/api/reviews', { credentials: 'include' });
             const data = await res.json();
             if (res.ok && data.success) {
-                setReviews(data.reviews);
+                // Filter out pending reviews (awaiting payment)
+                const activeReviews = data.reviews.filter(
+                    (review: Review) => review.status !== 'pending'
+                );
+                setReviews(activeReviews);
             }
         } catch (error) {
             console.error('Failed to fetch reviews:', error);
@@ -68,7 +73,14 @@ export default function DashboardPage() {
             const res = await fetch(`/api/rewrites?userId=${user?.id}`, { credentials: 'include' });
             const data = await res.json();
             if (res.ok && data.success) {
-                setRewrites(data.rewrites);
+                // Filter out unpaid rewrites (pending_payment status or pending payment_status)
+                const activeRewrites = data.rewrites.filter(
+                    (rewrite: RewriteOrder) =>
+                        rewrite.status !== 'pending_payment' &&
+                        rewrite.status !== 'cancelled' &&
+                        rewrite.payment_status !== 'pending'
+                );
+                setRewrites(activeRewrites);
             }
         } catch (error) {
             console.error('Failed to fetch rewrites:', error);

@@ -7,7 +7,11 @@ export async function GET(request: NextRequest) {
         const { searchParams } = new URL(request.url);
         const status = searchParams.get('status');
 
-        let query = insforge.database.from('rewrite_orders').select('*');
+        // Always exclude unpaid orders (pending_payment)
+        let query = insforge.database
+            .from('rewrite_orders')
+            .select('*')
+            .neq('status', 'pending_payment');
 
         // Filter by status if provided
         if (status && status !== 'all') {
@@ -60,9 +64,9 @@ export async function PATCH(request: NextRequest) {
             updateData.completed_at = new Date().toISOString();
         }
 
-        // If marking as in_progress, add due_date (7 business days from now)
+        // If marking as in_progress, add due_date (3 business days from now)
         if (status === 'in_progress') {
-            updateData.due_date = addBusinessDays(new Date(), 7).toISOString();
+            updateData.due_date = addBusinessDays(new Date(), 3).toISOString();
         }
 
         const { data, error } = await insforge.database

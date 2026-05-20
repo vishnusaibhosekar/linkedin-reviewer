@@ -66,7 +66,9 @@ export default function ReportPage() {
     useEffect(() => {
         async function fetchReview() {
             try {
-                const response = await fetch(`/api/reviews/${reviewId}`);
+                const response = await fetch(`/api/reviews/${reviewId}`, {
+                    credentials: 'include'
+                });
                 const result = await response.json();
 
                 if (!response.ok) {

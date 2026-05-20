@@ -71,6 +71,7 @@ export async function POST(request: NextRequest) {
                 user_id: userId,
                 review_id: reviewId,
                 status: 'pending_payment',
+                payment_status: 'pending',
                 resume_storage_path: resumePath,
                 key_accomplishments: keyAccomplishments,
                 target_roles: targetRoles,
