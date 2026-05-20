@@ -207,7 +207,10 @@ export default function ReportPage() {
                             </div>
                         </div>
                     </div>
+
                 </div>
+
+
 
                 {/* Category Scores Grid */}
                 <div className="mb-8">
@@ -331,23 +334,38 @@ export default function ReportPage() {
                     </div>
                 </div>
 
+                {/* Rewrite CTA Section */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-8 mb-8">
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                        <div className="flex-1">
+                            <h3 className="text-2xl font-bold text-[#172B4D] mb-2">
+                                Want a Professional Rewrite?
+                            </h3>
+                            <p className="text-sm text-[#6B778C] mb-4">
+                                Get your LinkedIn profile rewritten by Manish Maryada (YC Alum, Forbes 30u30).
+                                Includes Headline, About/Summary, Experience bullets, and Skills recommendations.
+                                Delivered in 2–3 business days.
+                            </p>
+                        </div>
+                        <Button
+                            onClick={() => router.push(`/dashboard/review/${reviewId}/rewrite`)}
+                            className="bg-[#0052CC] text-white hover:bg-[#0043A8] whitespace-nowrap px-8 py-6 text-lg"
+                        >
+                            Get Your LinkedIn Rewritten →
+                        </Button>
+                    </div>
+                </div>
+
                 {/* Footer Actions */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Button
-                        disabled
-                        className="h-12 px-8 bg-[#6B778C] cursor-not-allowed"
-                        title="Coming Soon"
-                    >
-                        <Download className="w-5 h-5 mr-2" />
-                        Download PDF Report (Coming Soon)
-                    </Button>
-                    <Button
                         variant="outline"
                         onClick={() => router.push('/dashboard/new-review')}
-                        className="h-12 px-8"
+                        className="text-lg px-8 py-6"
                     >
                         Start New Review
                     </Button>
+
                 </div>
             </div>
         </div>

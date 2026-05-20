@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Loader2Icon, LogOut, User } from "lucide-react";
+import { Loader2Icon, LogOut, User, Download } from "lucide-react";
 import Logo from "@/app/components/Logo";
+import { toast } from "sonner";
 
 interface Review {
     id: string;
@@ -17,18 +18,34 @@ interface Review {
     professional_status: string;
 }
 
+interface RewriteOrder {
+    id: string;
+    status: string;
+    created_at: string;
+    due_date: string;
+    deliverable_path: string | null;
+    reviews: {
+        full_name: string;
+        overall_score: number | null;
+        score_band: string | null;
+    };
+}
+
 export default function DashboardPage() {
     const router = useRouter();
     const { user, loading, signOut } = useAuth();
     const [isSigningOut, setIsSigningOut] = useState(false);
     const [reviews, setReviews] = useState<Review[]>([]);
     const [loadingReviews, setLoadingReviews] = useState(true);
+    const [rewrites, setRewrites] = useState<RewriteOrder[]>([]);
+    const [loadingRewrites, setLoadingRewrites] = useState(true);
 
     useEffect(() => {
         if (!loading && !user && !isSigningOut) {
             router.push("/auth/login");
         } else if (!loading && user) {
             fetchReviews();
+            fetchRewrites();
         }
     }, [user, loading, router, isSigningOut]);
 
@@ -46,10 +63,56 @@ export default function DashboardPage() {
         }
     };
 
+    const fetchRewrites = async () => {
+        try {
+            const res = await fetch(`/api/rewrites?userId=${user?.id}`, { credentials: 'include' });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                setRewrites(data.rewrites);
+            }
+        } catch (error) {
+            console.error('Failed to fetch rewrites:', error);
+        } finally {
+            setLoadingRewrites(false);
+        }
+    };
+
+    const handleDownloadRewrite = async (rewriteId: string, deliverablePath: string) => {
+        try {
+            const response = await fetch(`/api/rewrites/download?userId=${user?.id}&path=${encodeURIComponent(deliverablePath)}`);
+            if (response.ok) {
+                const { downloadUrl } = await response.json();
+                window.open(downloadUrl, '_blank');
+            } else {
+                toast.error('Failed to download rewrite');
+            }
+        } catch (error) {
+            toast.error('Failed to download rewrite');
+        }
+    };
+
     const handleSignOut = async () => {
         setIsSigningOut(true);
         await signOut();
         router.push("/");
+    };
+
+    const StatusBadge = ({ status }: { status: string }) => {
+        const statusConfig: Record<string, { label: string; color: string }> = {
+            pending_payment: { label: 'Payment Pending', color: 'bg-gray-100 text-gray-800' },
+            paid: { label: 'Paid', color: 'bg-blue-100 text-blue-800' },
+            in_progress: { label: 'In Progress', color: 'bg-yellow-100 text-yellow-800' },
+            completed: { label: 'Completed', color: 'bg-green-100 text-green-800' },
+            delivered: { label: 'Delivered', color: 'bg-green-100 text-green-800' },
+        };
+
+        const config = statusConfig[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
+
+        return (
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
+                {config.label}
+            </span>
+        );
     };
 
     if (loading) {
@@ -202,6 +265,72 @@ export default function DashboardPage() {
                                     </div>
                                 );
                             })}
+                        </div>
+                    )}
+                </div>
+
+                {/* My Rewrites Section */}
+                <div className="mt-16">
+                    <h3 className="text-2xl font-semibold text-[#172B4D] mb-6">My Rewrites</h3>
+
+                    {loadingRewrites ? (
+                        <div className="bg-white rounded-2xl shadow-lg border border-[#DFE1E6] p-12 text-center">
+                            <Loader2Icon className="w-8 h-8 animate-spin text-[#0052CC] mx-auto" />
+                            <p className="text-sm text-[#6B778C] mt-4">Loading rewrites...</p>
+                        </div>
+                    ) : rewrites.length === 0 ? (
+                        <div className="bg-white rounded-2xl shadow-lg border border-[#DFE1E6] p-8 text-center">
+                            <p className="text-[#6B778C]">No rewrite orders yet</p>
+                            <p className="text-sm text-[#6B778C] mt-2">
+                                Purchase a rewrite from your score report to get started
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {rewrites.map((rewrite) => (
+                                <div
+                                    key={rewrite.id}
+                                    className="bg-white rounded-lg shadow border border-[#DFE1E6] p-6"
+                                >
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <p className="font-semibold text-[#172B4D]">LinkedIn Rewrite</p>
+                                            <p className="text-sm text-[#6B778C] mt-1">
+                                                {rewrite.reviews?.full_name || 'Profile Rewrite'} - Score: {rewrite.reviews?.overall_score || 'N/A'}/100
+                                            </p>
+                                            <p className="text-xs text-[#6B778C] mt-1">
+                                                Ordered on {new Date(rewrite.created_at).toLocaleDateString('en-US', {
+                                                    year: 'numeric',
+                                                    month: 'long',
+                                                    day: 'numeric'
+                                                })}
+                                            </p>
+                                            {rewrite.due_date && (
+                                                <p className="text-xs text-[#6B778C] mt-1">
+                                                    Due: {new Date(rewrite.due_date).toLocaleDateString('en-US', {
+                                                        year: 'numeric',
+                                                        month: 'long',
+                                                        day: 'numeric'
+                                                    })}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="text-right space-y-2">
+                                            <StatusBadge status={rewrite.status} />
+                                            {rewrite.deliverable_path && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleDownloadRewrite(rewrite.id, rewrite.deliverable_path!)}
+                                                >
+                                                    <Download className="w-4 h-4 mr-2" />
+                                                    Download
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
