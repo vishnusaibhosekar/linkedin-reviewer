@@ -22,14 +22,52 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // For now, return the storage path - frontend will use InsForge SDK to get URL
-        // In production, you may want to generate signed URLs or use public bucket URLs
-        const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
-        const downloadUrl = `${baseUrl}/storage/v1/object/rewrites/${storagePath}`;
+        // Determine which bucket to use based on the file path
+        // PDF files are in 'linkedin-pdfs' bucket, screenshots in 'linkedin-screenshots', resumes in 'resumes', rewrites in 'rewrites'
+        let bucketName = 'rewrites'; // default
+        if (storagePath.includes('deliverables/')) {
+            bucketName = 'rewrites';
+        } else if (storagePath.endsWith('.pdf') || storagePath.endsWith('.docx') || storagePath.endsWith('.doc')) {
+            // Could be LinkedIn PDF, resume, or deliverable
+            // Check common patterns or default to linkedin-pdfs for .pdf
+            if (storagePath.includes('resume') || storagePath.includes('cv')) {
+                bucketName = 'resumes';
+            } else if (storagePath.includes('deliverable')) {
+                bucketName = 'rewrites';
+            } else {
+                bucketName = 'linkedin-pdfs';
+            }
+        } else {
+            // Image files (png, jpg, jpeg, webp) are screenshots
+            bucketName = 'linkedin-screenshots';
+        }
 
-        return NextResponse.json({
-            success: true,
-            downloadUrl: downloadUrl
+        // Use InsForge SDK to download the file
+        const { data: blob, error } = await insforge.storage
+            .from(bucketName)
+            .download(storagePath);
+
+        if (error || !blob) {
+            console.error('Storage download error:', error);
+            return NextResponse.json(
+                { error: 'Failed to download file' },
+                { status: 500 }
+            );
+        }
+
+        // Determine content type based on file extension
+        const contentType = storagePath.endsWith('.pdf')
+            ? 'application/pdf'
+            : storagePath.endsWith('.png') || storagePath.endsWith('.jpg') || storagePath.endsWith('.jpeg')
+                ? 'image/jpeg'
+                : 'application/octet-stream';
+
+        // Return the file directly as a response
+        return new NextResponse(blob, {
+            headers: {
+                'Content-Type': contentType,
+                'Content-Disposition': `inline; filename="${storagePath.split('/').pop()}"`,
+            },
         });
 
     } catch (error) {

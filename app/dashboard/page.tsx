@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Loader2Icon, LogOut, User, Download } from "lucide-react";
+import { Loader2Icon, LogOut, User, Download, FileText, TrendingUp, Clock, CheckCircle2, Play, Shield, Plus, User2 } from "lucide-react";
 import Logo from "@/app/components/Logo";
 import { toast } from "sonner";
 
@@ -98,18 +98,20 @@ export default function DashboardPage() {
     };
 
     const StatusBadge = ({ status }: { status: string }) => {
-        const statusConfig: Record<string, { label: string; color: string }> = {
-            pending_payment: { label: 'Payment Pending', color: 'bg-gray-100 text-gray-800' },
-            paid: { label: 'Paid', color: 'bg-blue-100 text-blue-800' },
-            in_progress: { label: 'In Progress', color: 'bg-yellow-100 text-yellow-800' },
-            completed: { label: 'Completed', color: 'bg-green-100 text-green-800' },
-            delivered: { label: 'Delivered', color: 'bg-green-100 text-green-800' },
+        const statusConfig: Record<string, { label: string; bg: string; icon: any }> = {
+            pending_payment: { label: 'Payment Pending', bg: 'bg-gray-100 text-gray-700 border border-gray-200', icon: Clock },
+            paid: { label: 'Paid', bg: 'bg-blue-50 text-blue-700 border border-blue-200', icon: CheckCircle2 },
+            in_progress: { label: 'In Progress', bg: 'bg-yellow-50 text-yellow-700 border border-yellow-200', icon: Play },
+            completed: { label: 'Completed', bg: 'bg-green-50 text-green-700 border border-green-200', icon: CheckCircle2 },
+            delivered: { label: 'Delivered', bg: 'bg-green-50 text-green-700 border border-green-200', icon: CheckCircle2 },
         };
 
-        const config = statusConfig[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
+        const config = statusConfig[status] || { label: status, bg: 'bg-gray-100 text-gray-700 border border-gray-200', icon: Clock };
+        const Icon = config.icon;
 
         return (
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${config.color}`}>
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${config.bg}`}>
+                <Icon className="w-3.5 h-3.5" />
                 {config.label}
             </span>
         );
@@ -128,35 +130,30 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-50">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
             {/* Header */}
-            <header className="bg-white border-b border-[#DFE1E6] shadow-sm">
+            <header className="bg-white border-b border-gray-200 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
                     <div className="flex items-center justify-between gap-3 sm:gap-4">
-                        {/* Logo - shrink on mobile */}
+                        {/* Logo */}
                         <div className="flex-shrink-0">
                             <Logo size="sm" />
                         </div>
 
-                        {/* User Info & Sign Out - hide email on mobile */}
+                        {/* User Info & Sign Out */}
                         <div className="flex items-center gap-2 sm:gap-4">
                             <div className="text-right hidden sm:block">
-                                <p className="text-sm font-medium text-[#172B4D]">{user.name}</p>
-                                <p className="text-xs text-[#6B778C] truncate max-w-[150px]">{user.email}</p>
+                                <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                                <p className="text-xs text-gray-500 truncate max-w-[150px]">{user.email}</p>
                             </div>
-                            {/* Mobile: Just show name */}
-                            {/* <div className="text-right sm:hidden">
-                                <p className="text-xs font-medium text-[#172B4D]">{user.name || "User"}</p>
-                            </div> */}
                             <Button
                                 onClick={handleSignOut}
                                 variant="outline"
                                 size="sm"
-                                className="gap-1.5 sm:gap-2 text-xs sm:text-sm whitespace-nowrap"
+                                className="gap-1.5 sm:gap-2 text-xs sm:text-sm whitespace-nowrap border-gray-300"
                             >
                                 <LogOut className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 <span className="hidden sm:inline">Sign Out</span>
-                                <span className="sm:hidden"></span>
                             </Button>
                         </div>
                     </div>
@@ -164,42 +161,52 @@ export default function DashboardPage() {
             </header>
 
             {/* Main Content */}
-            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div className="text-center space-y-6">
-                    <h2 className="text-4xl font-bold text-[#172B4D]">
-                        Welcome back! 👋
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+                {/* Hero Section */}
+                <div className="text-center mb-12">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl shadow-lg shadow-blue-500/20 mb-6">
+                        <User2 className="w-8 h-8 text-white" />
+                    </div>
+                    <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                        Welcome!
                     </h2>
-                    <p className="text-lg text-[#6B778C] max-w-2xl mx-auto">
+                    <p className="text-lg text-gray-500 max-w-2xl mx-auto mt-4">
                         Analyze your LinkedIn profile and get actionable insights to improve your professional presence.
                     </p>
 
                     <div className="pt-8">
                         <Button
                             size="lg"
-                            className="text-lg px-8 py-6"
                             onClick={() => router.push('/dashboard/new-review')}
+                            className="text-lg px-8 py-6 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg shadow-blue-500/25 text-white font-semibold"
                         >
-                            <User className="w-5 h-5 mr-2" />
+                            <Plus className="w-5 h-5 mr-2" />
                             Start New Review
                         </Button>
                     </div>
                 </div>
 
                 {/* Past Reviews Section */}
-                <div className="mt-16">
-                    <h3 className="text-2xl font-semibold text-[#172B4D] mb-6">Past Reviews</h3>
+                <div className="mb-12">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-blue-50 rounded-lg">
+                            <FileText className="w-5 h-5 text-blue-600" />
+                        </div>
+                        <h3 className="text-2xl font-bold text-gray-900">Your Reviews</h3>
+                    </div>
 
                     {loadingReviews ? (
-                        <div className="bg-white rounded-2xl shadow-lg border border-[#DFE1E6] p-12 text-center">
-                            <Loader2Icon className="w-8 h-8 animate-spin text-[#0052CC] mx-auto" />
-                            <p className="text-sm text-[#6B778C] mt-4">Loading reviews...</p>
+                        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center shadow-sm">
+                            <Loader2Icon className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
+                            <p className="text-sm text-gray-500 mt-4">Loading reviews...</p>
                         </div>
                     ) : reviews.length === 0 ? (
-                        <div className="bg-white rounded-2xl shadow-lg border border-[#DFE1E6] p-12 text-center">
-                            <div className="text-[#6B778C]">
-                                <p className="text-lg">No reviews yet</p>
-                                <p className="text-sm mt-2">Start your first LinkedIn profile review to see it here</p>
+                        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center shadow-sm">
+                            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                                <FileText className="w-8 h-8 text-gray-400" />
                             </div>
+                            <p className="text-lg font-medium text-gray-600">No reviews yet</p>
+                            <p className="text-sm text-gray-400 mt-2">Start your first LinkedIn profile review to see it here</p>
                         </div>
                     ) : (
                         <div className="space-y-4">
@@ -218,20 +225,20 @@ export default function DashboardPage() {
                                     <div
                                         key={review.id}
                                         onClick={() => router.push(`/dashboard/review/${review.id}/report`)}
-                                        className="bg-white rounded-lg shadow border border-[#DFE1E6] p-6 cursor-pointer hover:shadow-md transition-shadow"
+                                        className="bg-white rounded-xl border border-gray-200 p-5 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all group"
                                     >
                                         <div className="flex justify-between items-center">
-                                            <div>
-                                                <p className="font-semibold text-[#172B4D]">{review.full_name}</p>
-                                                <p className="text-sm text-[#6B778C] mt-1">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-semibold text-gray-900 text-lg">{review.full_name}</p>
+                                                <p className="text-sm text-gray-500 mt-1">
                                                     {new Date(review.created_at).toLocaleDateString('en-US', {
                                                         year: 'numeric',
-                                                        month: 'long',
+                                                        month: 'short',
                                                         day: 'numeric'
                                                     })}
                                                 </p>
                                                 {!review.overall_score && (
-                                                    <p className="text-sm text-[#6B778C] mt-1 italic">Processing...</p>
+                                                    <p className="text-sm text-blue-600 mt-1 font-medium">Processing...</p>
                                                 )}
                                             </div>
                                             {review.overall_score ? (
@@ -253,13 +260,13 @@ export default function DashboardPage() {
                                                         />
                                                     </svg>
                                                     <div className="absolute inset-0 flex items-center justify-center">
-                                                        <span className="text-sm font-bold text-[#172B4D]">{score}</span>
+                                                        <span className="text-sm font-bold text-gray-900">{score}</span>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                                                <div className="px-3 py-1.5 rounded-full bg-blue-50 text-blue-700 text-sm font-medium border border-blue-200">
                                                     {review.status}
-                                                </span>
+                                                </div>
                                             )}
                                         </div>
                                     </div>
@@ -270,18 +277,26 @@ export default function DashboardPage() {
                 </div>
 
                 {/* My Rewrites Section */}
-                <div className="mt-16">
-                    <h3 className="text-2xl font-semibold text-[#172B4D] mb-6">My Rewrites</h3>
+                <div className="mb-12">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-green-50 rounded-lg">
+                            <FileText className="w-5 h-5 text-green-600" />
+                        </div>
+                        <h3 className="text-2xl font-bold text-gray-900">My Rewrites</h3>
+                    </div>
 
                     {loadingRewrites ? (
-                        <div className="bg-white rounded-2xl shadow-lg border border-[#DFE1E6] p-12 text-center">
-                            <Loader2Icon className="w-8 h-8 animate-spin text-[#0052CC] mx-auto" />
-                            <p className="text-sm text-[#6B778C] mt-4">Loading rewrites...</p>
+                        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center shadow-sm">
+                            <Loader2Icon className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
+                            <p className="text-sm text-gray-500 mt-4">Loading rewrites...</p>
                         </div>
                     ) : rewrites.length === 0 ? (
-                        <div className="bg-white rounded-2xl shadow-lg border border-[#DFE1E6] p-8 text-center">
-                            <p className="text-[#6B778C]">No rewrite orders yet</p>
-                            <p className="text-sm text-[#6B778C] mt-2">
+                        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center shadow-sm">
+                            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                                <FileText className="w-8 h-8 text-gray-400" />
+                            </div>
+                            <p className="text-gray-600 font-medium">No rewrite orders yet</p>
+                            <p className="text-sm text-gray-400 mt-2">
                                 Purchase a rewrite from your score report to get started
                             </p>
                         </div>
@@ -290,38 +305,39 @@ export default function DashboardPage() {
                             {rewrites.map((rewrite) => (
                                 <div
                                     key={rewrite.id}
-                                    className="bg-white rounded-lg shadow border border-[#DFE1E6] p-6"
+                                    className="bg-white rounded-xl border border-gray-200 p-5 hover:border-green-200 transition-all"
                                 >
                                     <div className="flex justify-between items-start">
-                                        <div>
-                                            <p className="font-semibold text-[#172B4D]">LinkedIn Rewrite</p>
-                                            <p className="text-sm text-[#6B778C] mt-1">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-semibold text-gray-900 text-lg">LinkedIn Rewrite</p>
+                                            <p className="text-sm text-gray-500 mt-1">
                                                 {rewrite.reviews?.full_name || 'Profile Rewrite'} - Score: {rewrite.reviews?.overall_score || 'N/A'}/100
                                             </p>
-                                            <p className="text-xs text-[#6B778C] mt-1">
+                                            <p className="text-xs text-gray-400 mt-1">
                                                 Ordered on {new Date(rewrite.created_at).toLocaleDateString('en-US', {
                                                     year: 'numeric',
-                                                    month: 'long',
+                                                    month: 'short',
                                                     day: 'numeric'
                                                 })}
                                             </p>
                                             {rewrite.due_date && (
-                                                <p className="text-xs text-[#6B778C] mt-1">
+                                                <p className="text-xs text-gray-400 mt-1">
                                                     Due: {new Date(rewrite.due_date).toLocaleDateString('en-US', {
                                                         year: 'numeric',
-                                                        month: 'long',
+                                                        month: 'short',
                                                         day: 'numeric'
                                                     })}
                                                 </p>
                                             )}
                                         </div>
-                                        <div className="text-right space-y-2">
+                                        <div className="text-right space-y-2 flex-shrink-0 ml-4">
                                             <StatusBadge status={rewrite.status} />
                                             {rewrite.deliverable_path && (
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
                                                     onClick={() => handleDownloadRewrite(rewrite.id, rewrite.deliverable_path!)}
+                                                    className="border-gray-300"
                                                 >
                                                     <Download className="w-4 h-4 mr-2" />
                                                     Download
