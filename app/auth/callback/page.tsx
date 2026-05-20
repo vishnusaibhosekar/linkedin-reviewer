@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { Loader2Icon } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { insforge } from "@/lib/auth/insforge";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 export default function AuthCallbackPage() {
     const router = useRouter();
+    const { user, loading: authLoading } = useAuth();
     const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
 
     useEffect(() => {
@@ -44,10 +46,18 @@ export default function AuthCallbackPage() {
                     if (data?.accessToken) {
                         setStatus("success");
                         toast.success("Login successful! Redirecting to dashboard...");
-                        // Give the SDK time to save the session before redirecting
-                        setTimeout(() => {
+                        // Wait for AuthContext to hydrate before redirecting
+                        const waitForAuth = async () => {
+                            for (let i = 0; i < 20; i++) {
+                                const { data: userData } = await insforge.auth.getCurrentUser();
+                                if (userData?.user) {
+                                    break;
+                                }
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                            }
                             router.push("/dashboard");
-                        }, 1500);
+                        };
+                        await waitForAuth();
                         return;
                     }
                 }
@@ -59,10 +69,18 @@ export default function AuthCallbackPage() {
                 if (userData?.user) {
                     setStatus("success");
                     toast.success("Login successful! Redirecting to dashboard...");
-                    // Give the SDK time to save the session before redirecting
-                    setTimeout(() => {
+                    // Wait for AuthContext to hydrate before redirecting
+                    const waitForAuth = async () => {
+                        for (let i = 0; i < 20; i++) {
+                            const { data: userData } = await insforge.auth.getCurrentUser();
+                            if (userData?.user) {
+                                break;
+                            }
+                            await new Promise(resolve => setTimeout(resolve, 100));
+                        }
                         router.push("/dashboard");
-                    }, 1500);
+                    };
+                    await waitForAuth();
                 } else {
                     console.error('[Callback] No user found after callback');
                     setStatus("error");
