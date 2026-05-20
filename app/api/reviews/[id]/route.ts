@@ -1,13 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { insforge } from '@/lib/auth/insforge';
 
-// GET - Get single review details
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        // Await params in Next.js 16
         const resolvedParams = await params;
         const reviewId = resolvedParams.id;
 
@@ -17,24 +15,16 @@ export async function GET(
             .eq('id', reviewId)
             .single();
 
-        if (error) {
-            if (error.message?.includes('not found') || !data) {
-                return NextResponse.json(
-                    { error: 'Review not found' },
-                    { status: 404 }
-                );
-            }
-
-            console.error('Database query error:', error);
+        if (error || !data) {
             return NextResponse.json(
-                { error: 'Failed to fetch review' },
-                { status: 500 }
+                { error: 'Review not found' },
+                { status: 404 }
             );
         }
 
         return NextResponse.json({
             success: true,
-            review: data
+            review: data,
         });
 
     } catch (error) {
