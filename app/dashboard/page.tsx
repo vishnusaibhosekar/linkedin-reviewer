@@ -34,7 +34,7 @@ export default function DashboardPage() {
 
     const fetchReviews = async () => {
         try {
-            const res = await fetch('/api/reviews');
+            const res = await fetch('/api/reviews', { credentials: 'include' });
             const data = await res.json();
             if (res.ok && data.success) {
                 setReviews(data.reviews);
@@ -140,35 +140,59 @@ export default function DashboardPage() {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            {reviews.map((review) => (
-                                <div
-                                    key={review.id}
-                                    onClick={() => router.push(`/dashboard/review/${review.id}/report`)}
-                                    className="bg-white rounded-lg shadow border border-[#DFE1E6] p-6 cursor-pointer hover:shadow-md transition-shadow"
-                                >
-                                    <div className="flex justify-between items-center">
-                                        <div>
-                                            <p className="text-sm text-[#6B778C]">
-                                                {new Date(review.created_at).toLocaleDateString('en-US', {
-                                                    year: 'numeric',
-                                                    month: 'long',
-                                                    day: 'numeric'
-                                                })}
-                                            </p>
-                                            <p className="text-lg font-semibold text-[#172B4D] mt-1">
-                                                {review.overall_score ? `Score: ${review.overall_score}/100` : 'Processing...'}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            {review.score_band ? (
-                                                <span className={`px-3 py-1 rounded-full text-sm font-medium ${review.score_band === 'Exceptional' || review.score_band === 'Strong'
-                                                        ? 'bg-green-100 text-green-800'
-                                                        : review.score_band === 'Average'
-                                                            ? 'bg-yellow-100 text-yellow-800'
-                                                            : 'bg-red-100 text-red-800'
-                                                    }`}>
-                                                    {review.score_band}
-                                                </span>
+                            {reviews.map((review) => {
+                                const score = review.overall_score ?? 0;
+                                const radius = 28;
+                                const circumference = 2 * Math.PI * radius;
+                                const filled = (score / 100) * circumference;
+                                const color =
+                                    score >= 90 ? '#16a34a' :
+                                        score >= 80 ? '#ceeb3fff' :
+                                            score >= 70 ? '#ea580c' :
+                                                '#dc2626';
+
+                                return (
+                                    <div
+                                        key={review.id}
+                                        onClick={() => router.push(`/dashboard/review/${review.id}/report`)}
+                                        className="bg-white rounded-lg shadow border border-[#DFE1E6] p-6 cursor-pointer hover:shadow-md transition-shadow"
+                                    >
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <p className="font-semibold text-[#172B4D]">{review.full_name}</p>
+                                                <p className="text-sm text-[#6B778C] mt-1">
+                                                    {new Date(review.created_at).toLocaleDateString('en-US', {
+                                                        year: 'numeric',
+                                                        month: 'long',
+                                                        day: 'numeric'
+                                                    })}
+                                                </p>
+                                                {!review.overall_score && (
+                                                    <p className="text-sm text-[#6B778C] mt-1 italic">Processing...</p>
+                                                )}
+                                            </div>
+                                            {review.overall_score ? (
+                                                <div className="relative w-16 h-16 flex-shrink-0">
+                                                    <svg viewBox="0 0 64 64" className="w-16 h-16 -rotate-90">
+                                                        <circle
+                                                            cx="32" cy="32" r={radius}
+                                                            fill="none"
+                                                            stroke="#E5E7EB"
+                                                            strokeWidth="6"
+                                                        />
+                                                        <circle
+                                                            cx="32" cy="32" r={radius}
+                                                            fill="none"
+                                                            stroke={color}
+                                                            strokeWidth="6"
+                                                            strokeLinecap="round"
+                                                            strokeDasharray={`${filled} ${circumference}`}
+                                                        />
+                                                    </svg>
+                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                        <span className="text-sm font-bold text-[#172B4D]">{score}</span>
+                                                    </div>
+                                                </div>
                                             ) : (
                                                 <span className="px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                                                     {review.status}
@@ -176,8 +200,8 @@ export default function DashboardPage() {
                                             )}
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
