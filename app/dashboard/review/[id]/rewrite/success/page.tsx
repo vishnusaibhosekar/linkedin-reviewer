@@ -105,10 +105,10 @@ export default function RewriteSuccessPage() {
                             {errorMessage || 'Unable to verify your payment'}
                         </p>
                         <Button
-                            onClick={() => router.push(`/dashboard/review/${reviewId}`)}
+                            onClick={() => router.push(`/dashboard`)}
                             className="bg-[#0052CC] hover:bg-[#0043A8]"
                         >
-                            Return to Review
+                            Return to Dashboard
                         </Button>
                     </>
                 )}
