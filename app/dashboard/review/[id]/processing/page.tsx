@@ -40,7 +40,9 @@ export default function ProcessingPage() {
             setStatus('analyzing');
 
             // Step 2: Get base64 screenshots from sessionStorage
-            const screenshotsJson = sessionStorage.getItem(`review_${reviewId}_screenshots`);
+            // Try both keys: 'review_{id}_screenshots' (new) and 'new_review_screenshots' (legacy)
+            const screenshotsJson = sessionStorage.getItem(`review_${reviewId}_screenshots`)
+                || sessionStorage.getItem('new_review_screenshots');
             console.log('Retrieved screenshots from sessionStorage:', screenshotsJson ? 'found' : 'not found');
             const screenshots = screenshotsJson ? JSON.parse(screenshotsJson) : {};
             const screenshotBase64Array = Object.values(screenshots) as string[];

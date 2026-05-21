@@ -37,6 +37,7 @@ export default function NewReviewPage() {
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [showTooltip, setShowTooltip] = useState<string | null>(null);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [pendingReviewId, setPendingReviewId] = useState<string | null>(null);
 
     // Use ref to track base64 data synchronously (avoid async state update issues)
     const base64ScreenshotsRef = useRef<{ [key: string]: string }>({});
@@ -210,27 +211,45 @@ export default function NewReviewPage() {
         }
     };
 
-    const handlePayAndSubmit = () => {
+    const handlePayAndSubmit = async () => {
+        console.log('handlePayAndSubmit called, pendingReviewId:', pendingReviewId);
+
+        // If reviewId already exists (user closed modal before), just reopen it
+        if (pendingReviewId) {
+            console.log('Reusing existing reviewId, opening modal');
+            setShowPaymentModal(true);
+            return;
+        }
+
+        setLoading(true);
+
         // Reset base64 ref for fresh uploads
         base64ScreenshotsRef.current = {};
-        // Kick off uploads immediately in the background
-        uploadResultRef.current = startUploads();
-        // Open modal — user interacts with payment while uploads run
-        setShowPaymentModal(true);
-    };
 
-    const handlePaymentSuccess = async () => {
-        setShowPaymentModal(false);
-        setIsPreparingReview(true);
-        setPrepareStatus('Finalising your uploads...');
+        // Start uploads in the background
+        const uploadPromise = startUploads();
+        uploadResultRef.current = uploadPromise;
 
         try {
-            // Await the upload promise (likely already resolved by now)
-            const { pdfPath, screenshotPaths } = await uploadResultRef.current!;
+            // Wait for uploads to complete
+            const { pdfPath, screenshotPaths } = await uploadPromise;
 
-            setPrepareStatus('Creating your review...');
+            // Store upload data in sessionStorage for payment success page
+            sessionStorage.setItem('new_review_pdf', JSON.stringify({
+                fullName: formData.fullName,
+                professionalStatus: formData.professionalStatus,
+                workExperience: formData.workExperience,
+                currentJobTitle: formData.currentJobTitle,
+                purpose: formData.purpose,
+                linkedinUrl: formData.linkedinUrl,
+                pdfPath,
+            }));
 
-            // Create review record in DB
+            sessionStorage.setItem('new_review_screenshots', JSON.stringify({
+                screenshotPaths,
+            }));
+
+            // Create a pending review record in DB (payment_status: 'pending')
             const reviewResponse = await fetch('/api/reviews', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -243,7 +262,8 @@ export default function NewReviewPage() {
                     purpose: formData.purpose,
                     linkedinUrl: formData.linkedinUrl,
                     pdfPath,
-                    screenshotPaths
+                    screenshotPaths,
+                    paymentStatus: 'pending',
                 }),
             });
 
@@ -253,22 +273,35 @@ export default function NewReviewPage() {
                 throw new Error(reviewResult.error || 'Failed to create review');
             }
 
-            // Save base64 screenshots for the processing page AI call
-            // Isolated try/catch — a QuotaExceededError must NOT block the redirect
+            const reviewId = reviewResult.reviewId;
+            console.log('Review created with ID:', reviewId);
+
+            // Store base64 screenshots in sessionStorage for AI processing after payment
             try {
-                sessionStorage.setItem(
-                    `review_${reviewResult.reviewId}_screenshots`,
-                    JSON.stringify(base64ScreenshotsRef.current)
-                );
+                sessionStorage.setItem(`review_${reviewId}_screenshots`, JSON.stringify(base64ScreenshotsRef.current));
             } catch (storageError) {
-                console.warn('sessionStorage quota exceeded — screenshots will be re-fetched from storage:', storageError);
+                console.warn('sessionStorage quota exceeded, screenshots will be fetched from server:', storageError);
             }
 
-            router.push(`/dashboard/review/${reviewResult.reviewId}/processing`);
+            // Set the review ID for payment modal
+            setPendingReviewId(reviewId);
+
+            // Reset loading before opening payment modal
+            setLoading(false);
+
+            // Open payment modal
+            console.log('Opening payment modal...');
+            setShowPaymentModal(true);
         } catch (error: any) {
-            setIsPreparingReview(false);
-            toast.error(error.message || 'Something went wrong. Please try again.');
+            console.error('handlePayAndSubmit error:', error);
+            toast.error(error.message || 'Failed to prepare review. Please try again.');
+            setLoading(false);
         }
+    };
+
+    const handlePaymentSuccess = async () => {
+        // This is now handled by the payment success page after redirect
+        setShowPaymentModal(false);
     };
 
     // Full-screen overlay shown between modal close and redirect
@@ -687,8 +720,16 @@ export default function NewReviewPage() {
                                 onClick={handlePayAndSubmit}
                                 className="flex-1 h-11 text-base"
                             >
-                                Pay & Get Review
-                                <CheckCircle className="w-4 h-4 ml-2" />
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    </>
+                                ) : (
+                                    <>
+                                        Pay & Get Review
+                                        <CheckCircle className="w-4 h-4 ml-2" />
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </div>
@@ -699,8 +740,11 @@ export default function NewReviewPage() {
                     isOpen={showPaymentModal}
                     onClose={() => setShowPaymentModal(false)}
                     onSuccess={handlePaymentSuccess}
-                    amount={99}
+                    amount={Number(process.env.NEXT_PUBLIC_DODO_REVIEW_PRICE) || 99}
                     userName={formData.fullName}
+                    userEmail={user?.email || ''}
+                    reviewId={pendingReviewId || ''}
+                    userId={user?.id || ''}
                 />
             </div>
         </div>

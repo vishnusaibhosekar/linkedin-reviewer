@@ -185,13 +185,14 @@ export default function AdminRewritesPage() {
 
     const getStatusBadge = (status: string) => {
         const config: Record<string, { bg: string; icon: any; label: string }> = {
+            'pending': { bg: 'bg-yellow-50 text-yellow-700 border border-yellow-200', icon: Clock, label: 'Ready to Start' },
             'pending_payment': { bg: 'bg-gray-100 text-gray-700 border border-gray-200', icon: Clock, label: 'Pending Payment' },
             'in_progress': { bg: 'bg-blue-50 text-blue-700 border border-blue-200', icon: Play, label: 'In Progress' },
             'completed': { bg: 'bg-green-50 text-green-700 border border-green-200', icon: CheckCircle2, label: 'Completed' },
             'cancelled': { bg: 'bg-red-50 text-red-700 border border-red-200', icon: AlertCircle, label: 'Cancelled' }
         };
 
-        const { bg, icon: Icon, label } = config[status] || config['pending_payment'];
+        const { bg, icon: Icon, label } = config[status] || config['pending'];
 
         return (
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${bg}`}>
@@ -370,11 +371,11 @@ export default function AdminRewritesPage() {
 
                 {/* Filter Tabs */}
                 <div className="flex gap-2 mb-6 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:pb-0">
-                    {['all', 'pending_payment', 'in_progress', 'completed'].map((status) => {
+                    {['all', 'pending', 'in_progress', 'completed'].map((status) => {
                         const isActive = filter === status;
                         const icons = {
                             'all': TrendingUp,
-                            'pending_payment': Clock,
+                            'pending': Clock,
                             'in_progress': Play,
                             'completed': CheckCircle2
                         };
@@ -467,7 +468,7 @@ export default function AdminRewritesPage() {
                                                 </td>
                                                 <td className="px-6 py-5">
                                                     <div className="flex items-center gap-2">
-                                                        {order.status === 'pending_payment' && (
+                                                        {order.status === 'pending' && (
                                                             <button
                                                                 onClick={() => handleStatusUpdate(order.id, 'in_progress')}
                                                                 disabled={updatingOrderId === order.id}
@@ -555,7 +556,7 @@ export default function AdminRewritesPage() {
                                             </div>
                                         </div>
                                         <div className="flex flex-wrap gap-2 pt-2">
-                                            {order.status === 'pending_payment' && (
+                                            {order.status === 'pending' && (
                                                 <button
                                                     onClick={() => handleStatusUpdate(order.id, 'in_progress')}
                                                     disabled={updatingOrderId === order.id}

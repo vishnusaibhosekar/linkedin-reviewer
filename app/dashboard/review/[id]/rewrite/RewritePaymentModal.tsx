@@ -3,9 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { X, CreditCard, Lock, Loader2 } from 'lucide-react';
+import { X, CreditCard, Lock, Loader2, ExternalLink } from 'lucide-react';
 
 interface RewritePaymentModalProps {
     isOpen: boolean;
@@ -13,23 +12,47 @@ interface RewritePaymentModalProps {
     onSuccess: () => void;
     amount: number;
     userName: string;
+    userEmail: string;
+    reviewId: string;
+    userId: string;
 }
 
-export default function RewritePaymentModal({ isOpen, onClose, onSuccess, amount, userName }: RewritePaymentModalProps) {
+export default function RewritePaymentModal({ isOpen, onClose, onSuccess, amount, userName, userEmail, reviewId, userId }: RewritePaymentModalProps) {
     const router = useRouter();
     const [processing, setProcessing] = useState(false);
 
-    const handleMockPayment = async () => {
+    const handleDodoPayment = async () => {
         setProcessing(true);
 
-        // Simulate payment processing
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        try {
+            // Create checkout session
+            const response = await fetch('/api/checkout/rewrite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    reviewId,
+                    email: userEmail,
+                    userName,
+                    userId,
+                    metadata: {
+                        amount: String(amount),
+                    }
+                }),
+            });
 
-        setProcessing(false);
-        toast.success('Payment successful!');
+            const data = await response.json();
 
-        // Call the success callback
-        onSuccess();
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to create checkout');
+            }
+
+            // Redirect to Dodo checkout
+            window.location.href = data.checkoutUrl;
+        } catch (error: any) {
+            console.error('Checkout error:', error);
+            toast.error(error.message || 'Failed to start payment');
+            setProcessing(false);
+        }
     };
 
     if (!isOpen) return null;
@@ -74,87 +97,38 @@ export default function RewritePaymentModal({ isOpen, onClose, onSuccess, amount
                     </div>
                 </div>
 
-                {/* Mock Payment Form */}
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-[#172B4D] mb-2">
-                            Card Number
-                        </label>
-                        <Input
-                            placeholder="4242 4242 4242 4242"
-                            defaultValue="4242 4242 4242 4242"
-                            className="h-11"
-                            disabled={processing}
-                        />
+                {/* Secure Payment Notice */}
+                <div className="flex items-center gap-2 mt-6 mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <Lock className="w-4 h-4 text-[#0052CC] flex-shrink-0" />
+                    <div className="text-xs text-[#172B4D]">
+                        <p className="font-semibold mb-1">Secure Payment via Dodo Payments</p>
+                        <p className="text-[#6B778C]">You'll be redirected to our secure payment partner to complete your purchase</p>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-[#172B4D] mb-2">
-                                Expiry
-                            </label>
-                            <Input
-                                placeholder="MM/YY"
-                                defaultValue="12/25"
-                                className="h-11"
-                                disabled={processing}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-[#172B4D] mb-2">
-                                CVC
-                            </label>
-                            <Input
-                                placeholder="123"
-                                defaultValue="123"
-                                className="h-11"
-                                disabled={processing}
-                            />
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-[#172B4D] mb-2">
-                            Name on Card
-                        </label>
-                        <Input
-                            placeholder={userName}
-                            defaultValue={userName}
-                            className="h-11"
-                            disabled={processing}
-                        />
-                    </div>
-                </div>
-
-                {/* Security Notice */}
-                <div className="flex items-center gap-2 mt-6 mb-6 text-xs text-[#6B778C]">
-                    <Lock className="w-3 h-3" />
-                    <span>Mock payment - no real charges will be made</span>
                 </div>
 
                 {/* Pay Button */}
                 <Button
-                    onClick={handleMockPayment}
+                    onClick={handleDodoPayment}
                     disabled={processing}
                     className="w-full h-12 text-lg bg-[#0052CC] hover:bg-[#0043A8]"
                 >
                     {processing ? (
                         <>
                             <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                            Processing Payment...
+                            Redirecting to Payment...
                         </>
                     ) : (
                         <>
-                            <Lock className="w-4 h-4 mr-2" />
-                            Pay ₹{amount.toFixed(2)}
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            Pay ₹{amount.toFixed(2)} Securely
                         </>
                     )}
                 </Button>
 
-                {/* Test Mode Notice */}
-                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-xs text-yellow-800 text-center">
-                        <strong>Test Mode:</strong> Using demo card ending in 4242
+                {/* Payment Methods */}
+                <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                    <p className="text-xs text-[#6B778C] text-center">
+                        <strong>Accepted:</strong> Visa, Mastercard, UPI, Net Banking, Wallets
                     </p>
                 </div>
             </div>

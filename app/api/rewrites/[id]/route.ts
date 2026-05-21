@@ -8,15 +8,8 @@ export async function GET(
     try {
         const resolvedParams = await params;
         const rewriteId = resolvedParams.id;
-        const userId = request.headers.get('x-user-id');
 
-        if (!userId) {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 401 }
-            );
-        }
-
+        // RLS will filter by user_id automatically (cookie-based auth)
         const { data, error } = await insforge.database
             .from('rewrite_orders')
             .select(`
@@ -28,7 +21,7 @@ export async function GET(
                     created_at
                 )
             `)
-            .eq('id', rewriteId)
+            .eq('review_id', rewriteId)  // Query by review_id, not rewrite order id
             .single();
 
         if (error || !data) {
@@ -38,17 +31,9 @@ export async function GET(
             );
         }
 
-        // Validate ownership
-        if (data.user_id !== userId) {
-            return NextResponse.json(
-                { error: 'Forbidden' },
-                { status: 403 }
-            );
-        }
-
         return NextResponse.json({
             success: true,
-            rewrite: data,
+            rewriteOrder: data,
         });
 
     } catch (error) {

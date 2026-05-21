@@ -1,0 +1,68 @@
+import { NextRequest, NextResponse } from 'next/server';
+import DodoPayments from 'dodopayments';
+
+const client = new DodoPayments({
+    bearerToken: process.env.DODO_PAYMENTS_API_KEY!,
+    environment: (process.env.DODO_PAYMENTS_ENVIRONMENT as any) || 'test_mode',
+});
+
+export async function POST(req: NextRequest) {
+    try {
+        const { reviewId, email, userName, userId, metadata } = await req.json();
+
+        if (!reviewId || !email) {
+            return NextResponse.json(
+                { error: 'Missing required fields' },
+                { status: 400 }
+            );
+        }
+
+        // Get product ID based on environment
+        const isLiveMode = process.env.DODO_PAYMENTS_ENVIRONMENT === 'live_mode';
+        const rewriteProductId = isLiveMode
+            ? process.env.DODO_LIVE_REWRITE_PRODUCT_ID!
+            : process.env.DODO_TEST_REWRITE_PRODUCT_ID!;
+
+        // Create checkout session for LinkedIn Rewrite
+        const session = await client.checkoutSessions.create({
+            product_cart: [
+                {
+                    product_id: rewriteProductId,
+                    quantity: 1
+                }
+            ],
+            customer: {
+                email: email,
+                name: userName || email,
+            },
+            metadata: {
+                review_id: reviewId,
+                user_id: userId || '',
+                product_type: 'linkedin_rewrite',
+                ...metadata,
+            },
+            return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/review/${reviewId}/rewrite/success`,
+        });
+
+        // Log session creation for traceability
+        console.log('[Checkout] Rewrite session created:', {
+            reviewId,
+            sessionId: session.session_id,
+            checkoutUrl: session.checkout_url,
+        });
+
+        // Persist checkout session ID to database for reconciliation
+        // Note: rewrite_orders is created after payment, so we'll update it via webhook
+        // But we can store it in metadata for now
+
+        return NextResponse.json({
+            checkoutUrl: session.checkout_url,
+        });
+    } catch (error: any) {
+        console.error('Rewrite checkout creation error:', error);
+        return NextResponse.json(
+            { error: error.message || 'Failed to create checkout session' },
+            { status: 500 }
+        );
+    }
+}

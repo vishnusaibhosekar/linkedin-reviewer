@@ -42,14 +42,17 @@ export default function RewriteIntakePage() {
 
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [uploading, setUploading] = useState(false);
+    const [pendingRewriteId, setPendingRewriteId] = useState<string | null>(null);
 
-    const REWRITE_PRICE = 2499; // Mock price - update when confirmed
+    const REWRITE_PRICE = Number(process.env.NEXT_PUBLIC_DODO_REWRITE_PRICE) || 499;
 
     // Fetch review data on mount
     useEffect(() => {
         async function fetchReview() {
             try {
-                const response = await fetch(`/api/reviews/${reviewId}`);
+                const response = await fetch(`/api/reviews/${reviewId}`, {
+                    credentials: 'include'
+                });
                 const result = await response.json();
 
                 if (!response.ok) {
@@ -161,9 +164,10 @@ export default function RewriteIntakePage() {
         });
     };
 
-    const handlePaymentSuccess = async () => {
+    const handleSubmitAndPay = async () => {
         setLoading(true);
         try {
+            // Create rewrite order in database BEFORE payment (status: pending_payment)
             const response = await fetch('/api/rewrites', {
                 method: 'POST',
                 headers: {
@@ -188,8 +192,11 @@ export default function RewriteIntakePage() {
                 throw new Error(result.error || 'Failed to create rewrite order');
             }
 
-            toast.success('Rewrite order created successfully!');
-            router.push('/dashboard');
+            // Store the rewrite ID for payment modal
+            setPendingRewriteId(result.rewriteId);
+
+            // Open payment modal
+            setShowPaymentModal(true);
         } catch (error: any) {
             toast.error(error.message);
         } finally {
@@ -508,11 +515,21 @@ export default function RewriteIntakePage() {
                                 Back
                             </Button>
                             <Button
-                                onClick={() => setShowPaymentModal(true)}
+                                onClick={handleSubmitAndPay}
+                                disabled={loading}
                                 className="bg-[#0052CC] hover:bg-[#0043A8]"
                             >
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Proceed to Payment
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Creating Order...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle className="w-4 h-4 mr-2" />
+                                        Proceed to Payment
+                                    </>
+                                )}
                             </Button>
                         </div>
                     </div>
@@ -522,9 +539,15 @@ export default function RewriteIntakePage() {
                 <RewritePaymentModal
                     isOpen={showPaymentModal}
                     onClose={() => setShowPaymentModal(false)}
-                    onSuccess={handlePaymentSuccess}
+                    onSuccess={() => {
+                        // After payment redirect, go to success page
+                        setShowPaymentModal(false);
+                    }}
                     amount={REWRITE_PRICE}
-                    userName={user?.name || review.full_name}
+                    userName={user?.name || review?.full_name || ''}
+                    userEmail={user?.email || ''}
+                    reviewId={reviewId}
+                    userId={user?.id || ''}
                 />
             </div>
         </div>
