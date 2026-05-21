@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
                 review_id: reviewId,
                 user_id: userId || '',
                 product_type: 'linkedin_rewrite',
+                connector_response_reference_id: `rewrite_${reviewId}_${Date.now()}`,
                 ...metadata,
             },
             return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/review/${reviewId}/rewrite/success`,

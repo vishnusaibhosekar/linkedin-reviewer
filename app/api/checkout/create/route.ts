@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
                 review_id: reviewId,
                 user_id: userId || '',
                 product_type: 'linkedin_review',
+                connector_response_reference_id: `review_${reviewId}_${Date.now()}`,
                 ...metadata,
             },
             return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/payment/success?review_id=${reviewId}`,
@@ -50,6 +51,8 @@ export async function POST(req: NextRequest) {
             reviewId,
             sessionId: session.session_id,
             checkoutUrl: session.checkout_url,
+            status: (session as any).status,
+            expiresAt: (session as any).expires_at,
         });
 
         // Persist checkout session ID to database for reconciliation

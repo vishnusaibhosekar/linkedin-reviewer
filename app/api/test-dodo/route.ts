@@ -8,40 +8,24 @@ const client = new DodoPayments({
 
 export async function GET(req: NextRequest) {
     try {
-        console.log('[Test] Checking Dodo connection...');
-        console.log('[Test] Environment:', process.env.DODO_PAYMENTS_ENVIRONMENT);
-        console.log('[Test] API Key (first 10 chars):', process.env.DODO_PAYMENTS_API_KEY?.substring(0, 10));
-
-        // Try to list products
         const products = await client.products.list();
-
-        const productList = (products as any).data || [];
-        console.log('[Test] Products found:', productList.length);
-        console.log('[Test] Products:', JSON.stringify(productList, null, 2));
+        const productList = (products as any).body?.items || (products as any).data || (products as any).products || [];
 
         return NextResponse.json({
             success: true,
             environment: process.env.DODO_PAYMENTS_ENVIRONMENT,
             productCount: productList.length,
             products: productList.map((p: any) => ({
-                id: p.id,
+                id: p.product_id || p.id,
                 name: p.name,
-                type: p.type,
+                price: p.price,
+                currency: p.currency,
             })),
         });
     } catch (error: any) {
-        console.error('[Test] Dodo connection error:', {
-            message: error.message,
-            status: error.status,
-            response: error.response,
-        });
-
+        console.error('[Test] Dodo connection error:', error.message);
         return NextResponse.json(
-            {
-                success: false,
-                error: error.message,
-                status: error.status,
-            },
+            { success: false, error: error.message },
             { status: error.status || 500 }
         );
     }

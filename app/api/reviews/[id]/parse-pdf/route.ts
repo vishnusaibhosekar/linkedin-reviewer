@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { insforge } from '@/lib/auth/insforge';
+import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import PDFParser from 'pdf2json';
@@ -50,11 +51,8 @@ export async function GET(
         // Extract text from PDF
         const pdfBuffer = await pdfData.arrayBuffer();
 
-        // Save to temp file for pdf2json
-        const tempDir = path.join(process.cwd(), 'tmp');
-        if (!fs.existsSync(tempDir)) {
-            fs.mkdirSync(tempDir, { recursive: true });
-        }
+        // Save to temp file for pdf2json (use OS temp directory for Vercel compatibility)
+        const tempDir = os.tmpdir();
         const tempPdfPath = path.join(tempDir, `${reviewId}.pdf`);
         fs.writeFileSync(tempPdfPath, Buffer.from(pdfBuffer));
 
