@@ -111,7 +111,7 @@ Form fields collected across the wizard:
 
 7. User is shown a review summary and pricing
 
-8. Payment gateway (Razorpay / Stripe) is opened
+8. Payment gateway (Dodo Payments) is opened
 
 9. On payment success, a confirmation screen is shown and a receipt is emailed
 
@@ -285,9 +285,17 @@ The AI scoring prompt is dynamically adjusted based on occupation status and exp
 
 ## **7.5 Payments**
 
-* Primary: Razorpay (INR) for Indian users
+* **Primary: Dodo Payments** — Global payment acceptance supporting INR, USD, and multiple currencies
 
-* Secondary: Stripe (USD/international) for global users
+* **Geographic Pricing Strategy** — Region-based pricing to optimize for purchasing power:
+  * **India (INR)**: ₹99 review, ₹499 rewrite
+  * **International (USD)**: $4.99 review, $19.99 rewrite (~4x multiplier)
+  * Region detection via IP geolocation (ipapi.co) with browser locale fallback
+  * Separate Dodo products per region (IN vs US product IDs)
+
+* Supports UPI, credit/debit cards, net banking, wallets, and international payment methods
+
+* Automatic currency detection based on user location or explicit selection
 
 * Webhooks to confirm payment before triggering review processing
 
@@ -322,7 +330,7 @@ The AI scoring prompt is dynamically adjusted based on occupation status and exp
 
 * Review intake form \+ file upload
 
-* Payment integration (Razorpay)
+* Payment integration (Dodo Payments)
 
 * AI scoring engine with structured output
 
@@ -336,7 +344,7 @@ The AI scoring prompt is dynamically adjusted based on occupation status and exp
 
 ## **Phase 2 — Growth (Weeks 9–16)**
 
-* Stripe integration for international payments
+* Multi-currency support expansion (additional payment methods via Dodo Payments)
 
 * WhatsApp/SMS delivery notifications
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight, Upload, CheckCircle, Loader2, X, ChevronLeft, Info } from 'lucide-react';
 import PaymentModal from './PaymentModal';
+import { detectUserRegion, CustomerRegion, getPricingInfo } from '@/lib/utils/region';
 
 export default function NewReviewPage() {
     const router = useRouter();
@@ -17,6 +18,16 @@ export default function NewReviewPage() {
     const [loading, setLoading] = useState(false);
     const [isPreparingReview, setIsPreparingReview] = useState(false);
     const [prepareStatus, setPrepareStatus] = useState<string>('');
+    const [region, setRegion] = useState<CustomerRegion>('US');
+    const [pricingInfo, setPricingInfo] = useState(getPricingInfo('US', 'review'));
+
+    // Detect user region on mount
+    useEffect(() => {
+        detectUserRegion().then(detectedRegion => {
+            setRegion(detectedRegion);
+            setPricingInfo(getPricingInfo(detectedRegion, 'review'));
+        });
+    }, []);
 
     const [formData, setFormData] = useState({
         fullName: '',
@@ -264,6 +275,7 @@ export default function NewReviewPage() {
                     pdfPath,
                     screenshotPaths,
                     paymentStatus: 'pending',
+                    customerRegion: region, // Store for analytics
                 }),
             });
 
@@ -740,11 +752,13 @@ export default function NewReviewPage() {
                     isOpen={showPaymentModal}
                     onClose={() => setShowPaymentModal(false)}
                     onSuccess={handlePaymentSuccess}
-                    amount={Number(process.env.NEXT_PUBLIC_DODO_REVIEW_PRICE) || 99}
+                    amount={pricingInfo.price}
+                    currencySymbol={pricingInfo.currencySymbol}
                     userName={formData.fullName}
                     userEmail={user?.email || ''}
                     reviewId={pendingReviewId || ''}
                     userId={user?.id || ''}
+                    region={region}
                 />
             </div>
         </div>

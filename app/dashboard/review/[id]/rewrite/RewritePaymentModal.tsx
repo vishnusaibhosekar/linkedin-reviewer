@@ -11,13 +11,15 @@ interface RewritePaymentModalProps {
     onClose: () => void;
     onSuccess: () => void;
     amount: number;
+    currencySymbol: string;
     userName: string;
     userEmail: string;
     reviewId: string;
     userId: string;
+    region: 'IN' | 'US';
 }
 
-export default function RewritePaymentModal({ isOpen, onClose, onSuccess, amount, userName, userEmail, reviewId, userId }: RewritePaymentModalProps) {
+export default function RewritePaymentModal({ isOpen, onClose, onSuccess, amount, currencySymbol, userName, userEmail, reviewId, userId, region }: RewritePaymentModalProps) {
     const router = useRouter();
     const [processing, setProcessing] = useState(false);
 
@@ -34,6 +36,7 @@ export default function RewritePaymentModal({ isOpen, onClose, onSuccess, amount
                     email: userEmail,
                     userName,
                     userId,
+                    region, // Pass region for geographic pricing
                     metadata: {
                         amount: String(amount),
                     }
@@ -81,7 +84,7 @@ export default function RewritePaymentModal({ isOpen, onClose, onSuccess, amount
                 <div className="bg-[#F4F5F7] rounded-lg p-4 mb-6">
                     <div className="flex justify-between items-center mb-2">
                         <span className="text-sm text-[#6B778C]">Professional Rewrite by Manish Maryada</span>
-                        <span className="font-semibold text-[#172B4D]">₹{amount.toFixed(2)}</span>
+                        <span className="font-semibold text-[#172B4D]">{currencySymbol}{amount.toFixed(2)}</span>
                     </div>
                     <div className="text-xs text-[#6B778C] mb-2">
                         Includes: Headline, About/Summary, Experience bullets, Skills recommendations
@@ -92,7 +95,7 @@ export default function RewritePaymentModal({ isOpen, onClose, onSuccess, amount
                     <div className="border-t border-[#DFE1E6] pt-2 mt-2">
                         <div className="flex justify-between items-center">
                             <span className="font-semibold text-[#172B4D]">Total</span>
-                            <span className="text-xl font-bold text-[#0052CC]">₹{amount.toFixed(2)}</span>
+                            <span className="text-xl font-bold text-[#0052CC]">{currencySymbol}{amount.toFixed(2)}</span>
                         </div>
                     </div>
                 </div>
@@ -120,7 +123,7 @@ export default function RewritePaymentModal({ isOpen, onClose, onSuccess, amount
                     ) : (
                         <>
                             <ExternalLink className="w-4 h-4 mr-2" />
-                            Pay ₹{amount.toFixed(2)} Securely
+                            Pay {currencySymbol}{amount.toFixed(2)} Securely
                         </>
                     )}
                 </Button>
