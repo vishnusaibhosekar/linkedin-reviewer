@@ -32,10 +32,23 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Upload to InsForge Storage
+        // Generate unique filename to avoid 409 conflicts
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substring(2, 9);
+        const originalName = file.name.replace(/\.[^/.]+$/, ''); // Remove extension
+        const extension = file.name.split('.').pop();
+        const uniqueFileName = `${timestamp}-${randomId}-${originalName}.${extension}`;
+
+        // Create a new File object with the unique name (preserves size and type)
+        const renamedFile = new File([file], uniqueFileName, {
+            type: file.type,
+            lastModified: Date.now()
+        });
+
+        // Upload to InsForge Storage with unique filename
         const { data, error } = await insforge.storage
             .from('linkedin-screenshots')
-            .uploadAuto(file);
+            .upload(uniqueFileName, renamedFile);
 
         if (error) {
             console.error('Storage upload error:', error);
