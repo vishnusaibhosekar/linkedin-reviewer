@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 function PaymentSuccessContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user } = useAuth();
+    const { user, refreshSession } = useAuth();
     const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
     const [errorMessage, setErrorMessage] = useState('');
 
@@ -26,6 +26,14 @@ function PaymentSuccessContent() {
             }
 
             try {
+                // Refresh session first to ensure we're authenticated after payment redirect
+                console.log('[Payment Success] Refreshing session before verification...');
+                const refreshed = await refreshSession();
+                if (!refreshed) {
+                    console.error('[Payment Success] Session refresh failed, user may need to log in again');
+                    // Don't fail here - let the API call fail naturally with proper error handling
+                }
+
                 // Wait a moment for webhook to process
                 await new Promise(resolve => setTimeout(resolve, 2000));
 

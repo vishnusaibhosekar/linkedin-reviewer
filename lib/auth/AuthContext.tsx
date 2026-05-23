@@ -17,6 +17,7 @@ interface AuthContextType {
     loading: boolean;
     signInWithOAuth: (provider: 'google' | 'linkedin' | 'github') => Promise<void>;
     signOut: () => Promise<void>;
+    refreshSession: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -24,6 +25,7 @@ const AuthContext = createContext<AuthContextType>({
     loading: true,
     signInWithOAuth: async () => { },
     signOut: async () => { },
+    refreshSession: async () => false,
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -39,7 +41,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (cancelled) return;
 
             if (error || !data?.user) {
-                setUser(null);
+                // Token might be expired - try to refresh the session
+                console.log('[Auth] getCurrentUser failed, attempting refresh...');
+                try {
+                    const { data: refreshData, error: refreshError } = await insforge.auth.refreshSession(
+                        {} // SDK will read refresh token from httpOnly cookie automatically
+                    );
+
+                    if (cancelled) return;
+
+                    if (refreshError || !refreshData?.user) {
+                        console.log('[Auth] Refresh failed, user is logged out');
+                        setUser(null);
+                    } else {
+                        console.log('[Auth] Session refreshed successfully');
+                        setUser(refreshData.user as User);
+                    }
+                } catch (refreshErr) {
+                    console.error('[Auth] Refresh error:', refreshErr);
+                    if (!cancelled) setUser(null);
+                }
             } else {
                 setUser(data.user as User);
             }
@@ -66,8 +87,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const refreshSession = async (): Promise<boolean> => {
+        try {
+            const { data, error } = await insforge.auth.refreshSession({});
+            if (error || !data?.user) {
+                console.log('[Auth] Manual refresh failed');
+                setUser(null);
+                return false;
+            }
+            console.log('[Auth] Manual refresh successful');
+            setUser(data.user as User);
+            return true;
+        } catch (err) {
+            console.error('[Auth] Manual refresh error:', err);
+            setUser(null);
+            return false;
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, signInWithOAuth, signOut }}>
+        <AuthContext.Provider value={{ user, loading, signInWithOAuth, signOut, refreshSession }}>
             {children}
         </AuthContext.Provider>
     );
