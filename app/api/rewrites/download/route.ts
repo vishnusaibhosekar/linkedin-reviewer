@@ -62,11 +62,15 @@ export async function GET(request: NextRequest) {
                 ? 'image/jpeg'
                 : 'application/octet-stream';
 
+        // Extract filename and encode it properly for HTTP headers
+        const rawFilename = storagePath.split('/').pop() || 'file';
+        const encodedFilename = encodeURIComponent(rawFilename).replace(/['()]/g, escape).replace(/\*/g, '%2A');
+
         // Return the file directly as a response
         return new NextResponse(blob, {
             headers: {
                 'Content-Type': contentType,
-                'Content-Disposition': `inline; filename="${storagePath.split('/').pop()}"`,
+                'Content-Disposition': `inline; filename*=UTF-8''${encodedFilename}`,
             },
         });
 
