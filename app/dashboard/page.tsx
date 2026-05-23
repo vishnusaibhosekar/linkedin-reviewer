@@ -34,7 +34,7 @@ interface RewriteOrder {
 
 export default function DashboardPage() {
     const router = useRouter();
-    const { user, loading, signOut } = useAuth();
+    const { user, loading, signOut, refreshSession } = useAuth();
     const [isSigningOut, setIsSigningOut] = useState(false);
     const [reviews, setReviews] = useState<Review[]>([]);
     const [loadingReviews, setLoadingReviews] = useState(true);
@@ -43,16 +43,45 @@ export default function DashboardPage() {
 
     useEffect(() => {
         if (!loading && !user && !isSigningOut) {
-            router.push("/auth/login");
+            // Try to refresh session before redirecting to login
+            handleAuthExpired();
         } else if (!loading && user) {
             fetchReviews();
             fetchRewrites();
         }
     }, [user, loading, router, isSigningOut]);
 
+    const handleAuthExpired = async () => {
+        console.log('[Dashboard] Auth appears expired, attempting refresh...');
+        const refreshed = await refreshSession();
+        if (refreshed) {
+            console.log('[Dashboard] Session refreshed successfully, staying on dashboard');
+            // Session was refreshed, re-fetch data
+            fetchReviews();
+            fetchRewrites();
+        } else {
+            console.log('[Dashboard] Refresh failed, redirecting to login');
+            router.push('/auth/login');
+        }
+    };
+
     const fetchReviews = async () => {
         try {
             const res = await fetch('/api/reviews', { credentials: 'include' });
+
+            // If unauthorized, try to refresh session
+            if (res.status === 401) {
+                console.log('[Dashboard] fetchReviews got 401, attempting refresh...');
+                const refreshed = await refreshSession();
+                if (refreshed) {
+                    // Retry the fetch with refreshed session
+                    return fetchReviews();
+                } else {
+                    router.push('/auth/login');
+                    return;
+                }
+            }
+
             const data = await res.json();
             if (res.ok && data.success) {
                 // Filter out pending reviews (awaiting payment)
@@ -71,6 +100,20 @@ export default function DashboardPage() {
     const fetchRewrites = async () => {
         try {
             const res = await fetch(`/api/rewrites?userId=${user?.id}`, { credentials: 'include' });
+
+            // If unauthorized, try to refresh session
+            if (res.status === 401) {
+                console.log('[Dashboard] fetchRewrites got 401, attempting refresh...');
+                const refreshed = await refreshSession();
+                if (refreshed) {
+                    // Retry the fetch with refreshed session
+                    return fetchRewrites();
+                } else {
+                    router.push('/auth/login');
+                    return;
+                }
+            }
+
             const data = await res.json();
             if (res.ok && data.success) {
                 // Filter out unpaid rewrites (pending_payment status or pending payment_status)
