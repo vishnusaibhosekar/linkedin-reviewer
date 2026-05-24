@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight, Upload, Loader2, X, CheckCircle, FileText } from 'lucide-react';
 import RewritePaymentModal from './RewritePaymentModal';
+import { detectUserRegion, CustomerRegion, getPricingInfo } from '@/lib/utils/region';
 
 interface ReviewData {
     id: string;
@@ -28,6 +29,16 @@ export default function RewriteIntakePage() {
     const [loading, setLoading] = useState(false);
     const [review, setReview] = useState<ReviewData | null>(null);
     const [showPaymentModal, setShowPaymentModal] = useState(false);
+    const [region, setRegion] = useState<CustomerRegion>('US');
+    const [pricingInfo, setPricingInfo] = useState(getPricingInfo('US', 'rewrite'));
+
+    // Detect user region on mount
+    useEffect(() => {
+        detectUserRegion().then(detectedRegion => {
+            setRegion(detectedRegion);
+            setPricingInfo(getPricingInfo(detectedRegion, 'rewrite'));
+        });
+    }, []);
 
     const [formData, setFormData] = useState({
         resumeFile: null as File | null,
@@ -43,8 +54,6 @@ export default function RewriteIntakePage() {
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [uploading, setUploading] = useState(false);
     const [pendingRewriteId, setPendingRewriteId] = useState<string | null>(null);
-
-    const REWRITE_PRICE = Number(process.env.NEXT_PUBLIC_DODO_REWRITE_PRICE) || 499;
 
     // Fetch review data on mount
     useEffect(() => {
@@ -504,7 +513,7 @@ export default function RewriteIntakePage() {
                             <div className="border-t border-[#DFE1E6] pt-4">
                                 <div className="flex justify-between items-center">
                                     <span className="font-semibold text-[#172B4D]">Total</span>
-                                    <span className="text-2xl font-bold text-[#0052CC]">₹{REWRITE_PRICE.toFixed(2)}</span>
+                                    <span className="text-2xl font-bold text-[#0052CC]">{pricingInfo.currencySymbol}{pricingInfo.price.toFixed(2)}</span>
                                 </div>
                             </div>
                         </div>
@@ -543,11 +552,13 @@ export default function RewriteIntakePage() {
                         // After payment redirect, go to success page
                         setShowPaymentModal(false);
                     }}
-                    amount={REWRITE_PRICE}
+                    amount={pricingInfo.price}
+                    currencySymbol={pricingInfo.currencySymbol}
                     userName={user?.name || review?.full_name || ''}
                     userEmail={user?.email || ''}
                     reviewId={reviewId}
                     userId={user?.id || ''}
+                    region={region}
                 />
             </div>
         </div>

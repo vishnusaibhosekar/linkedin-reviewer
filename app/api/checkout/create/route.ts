@@ -9,7 +9,7 @@ const client = new DodoPayments({
 
 export async function POST(req: NextRequest) {
     try {
-        const { reviewId, email, userName, userId, metadata } = await req.json();
+        const { reviewId, email, userName, userId, metadata, region } = await req.json();
 
         if (!reviewId || !email) {
             return NextResponse.json(
@@ -18,11 +18,24 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Get product ID based on environment
+        // Get product ID based on environment and region
         const isLiveMode = process.env.DODO_PAYMENTS_ENVIRONMENT === 'live_mode';
+        const isIndianCustomer = region === 'IN';
+
         const reviewProductId = isLiveMode
-            ? process.env.DODO_LIVE_REVIEW_PRODUCT_ID!
-            : process.env.DODO_TEST_REVIEW_PRODUCT_ID!;
+            ? isIndianCustomer
+                ? process.env.DODO_LIVE_REVIEW_PRODUCT_ID_IN!
+                : process.env.DODO_LIVE_REVIEW_PRODUCT_ID_US!
+            : isIndianCustomer
+                ? process.env.DODO_TEST_REVIEW_PRODUCT_ID_IN!
+                : process.env.DODO_TEST_REVIEW_PRODUCT_ID_US!;
+
+        if (!reviewProductId) {
+            return NextResponse.json(
+                { error: 'Product ID not configured for this region' },
+                { status: 500 }
+            );
+        }
 
         // Create checkout session for LinkedIn AI Review
         const session = await client.checkoutSessions.create({
@@ -40,6 +53,7 @@ export async function POST(req: NextRequest) {
                 review_id: reviewId,
                 user_id: userId || '',
                 product_type: 'linkedin_review',
+                customer_region: region || 'US', // Track for analytics
                 connector_response_reference_id: `review_${reviewId}_${Date.now()}`,
                 ...metadata,
             },

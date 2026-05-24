@@ -65,7 +65,7 @@ Currently employed, not actively looking but wants profile to reflect their seni
 | Auth | InsForge (user records + sessions + JWT) |
 | OTP Delivery | Zavu.dev (WhatsApp OTP primary, SMS fallback) |
 | AI | OpenRouter (Claude Sonnet 4.5 default, swappable) |
-| Payments | Razorpay (India) + Stripe (International) |
+| Payments | Dodo Payments (Global — INR, USD, multi-currency) |
 | Profile Data | LinkedIn URL + PDF upload + Screenshot uploads |
 | File Storage | InsForge Storage (S3-compatible — PDFs, screenshots, rewrite deliverables) |
 | Messaging | Zavu.dev (WhatsApp notifications + transactional emails) |
@@ -115,7 +115,7 @@ From the Dashboard, user clicks "New LinkedIn Review" button. A multi-step form 
 All fields required except Current Role (conditional). Form validates before proceeding.
 
 **Step 3 — Payment**
-User is shown a review summary and pricing. Payment gateway (Razorpay for Indian users, Stripe for international) is opened. On payment success, a confirmation screen is shown and a receipt is emailed.
+User is shown a review summary and pricing. Payment gateway (Dodo Payments) is opened. On payment success, a confirmation screen is shown and a receipt is emailed.
 
 **Step 4 — AI Review Processing**
 System sends the PDF + screenshots + form data to the AI review engine. A processing screen is shown with a progress animation ("Analyzing your profile…"). Estimated wait time: 2–5 minutes.
@@ -152,7 +152,7 @@ At the bottom of the Score Report, a CTA is shown: "Get Your LinkedIn Rewritten 
 | Contact Email | Email input | Pre-filled from account, editable |
 
 **Step 3 — Payment & Confirmation**
-User is shown the rewrite pricing and scope of work. Payment completed via Razorpay/Stripe. Confirmation page and email sent immediately with expected delivery date.
+User is shown the rewrite pricing and scope of work. Payment completed via Dodo Payments. Confirmation page and email sent immediately with expected delivery date.
 
 **Step 4 — Delivery**
 Within 2–3 business days, the rewritten LinkedIn content is uploaded to the user's dashboard under "My Rewrites." User also receives an email (and WhatsApp notification) with the deliverable attached or linked.
@@ -316,18 +316,17 @@ Handled by sending screenshots as image inputs to the vision-capable model via O
 
 ### 7.2 Payment Providers
 
-**Razorpay** — Primary for Indian users. Supports UPI, cards, net banking, wallets.
-**Stripe** — For international users. Supports cards, Apple Pay, Google Pay.
+**Dodo Payments** — Global payment acceptance platform. Supports UPI, credit/debit cards, net banking, wallets (India), plus Apple Pay, Google Pay, and international cards. Automatic currency detection and multi-currency support.
 
 Auto-detect user's region (based on IP or explicit country selection) to show the appropriate payment provider.
 
 ### 7.3 Payment Flow
 
 1. User completes intake form → shown order summary with price
-2. Payment initiated via Razorpay/Stripe checkout
+2. Payment initiated via Dodo Payments checkout
 3. On success: payment record created, review processing triggered, receipt emailed
 4. On failure: user shown retry option, no review triggered
-5. Webhook from Razorpay/Stripe confirms payment status server-side (do not rely on client-side redirect alone)
+5. Webhook from Dodo Payments confirms payment status server-side (do not rely on client-side redirect alone)
 6. Invoices auto-generated and emailed on successful payment
 
 ---
@@ -427,10 +426,9 @@ Auto-detect user's region (based on IP or explicit country selection) to show th
 - `POST /api/reviews/:id/process` — Internal: trigger AI processing after payment confirmed
 
 ### 9.3 Payments
-- `POST /api/payments/create-order` — Create Razorpay order or Stripe payment intent
+- `POST /api/payments/create-order` — Create Dodo Payments checkout session
 - `POST /api/payments/verify` — Verify payment callback/webhook
-- `POST /api/webhooks/razorpay` — Razorpay webhook handler
-- `POST /api/webhooks/stripe` — Stripe webhook handler
+- `POST /api/webhooks/dodo` — Dodo Payments webhook handler
 
 ### 9.4 Rewrite Orders
 - `POST /api/rewrites` — Create rewrite order (resume + intake data)
@@ -703,7 +701,7 @@ Admin routes protected by role check. Only Manish's user ID (or users with `admi
 
 - User authentication (email + WhatsApp OTP via Zavu.dev)
 - Review intake form wizard + file uploads (PDF + screenshots)
-- Payment integration (Razorpay for India)
+- Payment integration (Dodo Payments for global acceptance)
 - AI scoring engine with structured JSON output via OpenRouter
 - Score report page with breakdown, feedback, and action plan
 - Rewrite add-on intake form + payment
@@ -713,7 +711,7 @@ Admin routes protected by role check. Only Manish's user ID (or users with `admi
 
 ### Phase 2 — Growth (Weeks 9–16)
 
-- Stripe integration for international payments
+- Multi-currency support expansion (additional payment methods via Dodo Payments)
 - WhatsApp/SMS delivery notifications for all events
 - Shareable score card (LinkedIn/Twitter sharing image)
 - Referral / affiliate program
@@ -773,7 +771,7 @@ Admin routes protected by role check. Only Manish's user ID (or users with `admi
                          ▼
 ┌─────────────────────────────────────────────────────────┐
 │                    PAYMENT                                │
-│              Razorpay / Stripe                           │
+│              Dodo Payments                            │
 └────────────────────────┬────────────────────────────────┘
                          │
                          ▼
@@ -826,7 +824,7 @@ Admin routes protected by role check. Only Manish's user ID (or users with `admi
 | # | Question | Status |
 |---|----------|--------|
 | 1 | **Pricing:** What is the price for AI review and premium rewrite? Launch/early-bird pricing? | Pending — Manish to confirm |
-| 2 | **Payment provider:** Razorpay only for MVP (India-first), or Stripe from day one? | Recommendation: Razorpay only for Phase 1 |
+| 2 | **Payment provider:** Dodo Payments from day one for global reach | Decision: Dodo Payments supports INR + USD + multi-currency from launch |
 | 3 | **Refund policy:** Under what conditions can a user request a refund? | Pending — Manish to confirm |
 | 4 | **Screenshot validation:** What if user uploads blurry/cropped/irrelevant images? Reject + re-request, or proceed with warning? | Recommendation: Proceed with warning, note in report if data was insufficient |
 | 5 | **Prompt iteration:** Plan for 3–5 iterations of the scoring prompt. Budget time for testing with 20+ real profiles. | Development phase |

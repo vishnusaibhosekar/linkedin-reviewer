@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { insforge } from '@/lib/auth/insforge';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -27,18 +28,30 @@ function PaymentSuccessContent() {
 
             try {
                 // Refresh session first to ensure we're authenticated after payment redirect
-                console.log('[Payment Success] Refreshing session before verification...');
-                const refreshed = await refreshSession();
-                if (!refreshed) {
-                    console.error('[Payment Success] Session refresh failed, user may need to log in again');
-                    // Don't fail here - let the API call fail naturally with proper error handling
+                const { data: sessionData } = await insforge.auth.getCurrentUser();
+                let userId = user?.id || sessionData?.user?.id;
+
+                if (!userId) {
+                    const refreshed = await refreshSession();
+                    if (refreshed) {
+                        // Get the user ID from the refreshed session
+                        const { data: refreshedData } = await insforge.auth.getCurrentUser();
+                        userId = refreshedData?.user?.id;
+                    }
                 }
+
+                if (!userId) {
+                    setStatus('error');
+                    setErrorMessage('Authentication required. Please log in again.');
+                    return;
+                }
+
 
                 // Wait a moment for webhook to process
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
                 // Check if review exists and has been marked as paid
-                const response = await fetch(`/api/reviews/${reviewId}?userId=${user?.id}`);
+                const response = await fetch(`/api/reviews/${reviewId}?userId=${userId}`);
                 const result = await response.json();
 
                 if (result.success && result.review) {
@@ -61,7 +74,7 @@ function PaymentSuccessContent() {
 
                         if (pdfData && screenshotsData) {
                             // Finalize the review creation
-                            await finalizeReviewCreation(reviewId, pdfData, screenshotsData);
+                            await finalizeReviewCreation(reviewId, pdfData, screenshotsData, userId);
                         } else {
                             setStatus('error');
                             setErrorMessage('Payment verified but upload data not found. Please contact support.');
@@ -81,7 +94,7 @@ function PaymentSuccessContent() {
         verifyPayment();
     }, [reviewId, router]);
 
-    const finalizeReviewCreation = async (reviewId: string, pdfData: string, screenshotsData: string) => {
+    const finalizeReviewCreation = async (reviewId: string, pdfData: string, screenshotsData: string, userId: string) => {
         try {
             const pdfObj = JSON.parse(pdfData);
             const screenshotsObj = JSON.parse(screenshotsData);
@@ -90,7 +103,7 @@ function PaymentSuccessContent() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: user?.id,
+                    userId,
                     fullName: pdfObj.fullName,
                     professionalStatus: pdfObj.professionalStatus,
                     workExperience: pdfObj.workExperience,
