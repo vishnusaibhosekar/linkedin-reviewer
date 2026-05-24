@@ -26,6 +26,19 @@ export default function RewritePaymentModal({ isOpen, onClose, onSuccess, amount
     const handleDodoPayment = async () => {
         setProcessing(true);
 
+        // Validate required fields before attempting checkout
+        if (!reviewId) {
+            toast.error('Missing review ID. Please start over.');
+            setProcessing(false);
+            return;
+        }
+
+        if (!userId) {
+            toast.error('Authentication required. Please log in again.');
+            setProcessing(false);
+            return;
+        }
+
         try {
             // Create checkout session
             const response = await fetch('/api/checkout/rewrite', {
@@ -49,11 +62,15 @@ export default function RewritePaymentModal({ isOpen, onClose, onSuccess, amount
                 throw new Error(data.error || 'Failed to create checkout');
             }
 
+            if (!data.checkoutUrl) {
+                throw new Error('No checkout URL received from payment server');
+            }
+
             // Redirect to Dodo checkout
             window.location.href = data.checkoutUrl;
         } catch (error: any) {
             console.error('Checkout error:', error);
-            toast.error(error.message || 'Failed to start payment');
+            toast.error(error.message || 'Failed to start payment. Please try again.');
             setProcessing(false);
         }
     };
