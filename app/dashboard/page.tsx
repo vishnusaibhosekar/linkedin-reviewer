@@ -64,15 +64,12 @@ export default function DashboardPage() {
     }, [user, loading, router, isSigningOut]);
 
     const handleAuthExpired = async () => {
-        console.log('[Dashboard] Auth appears expired, attempting refresh...');
         const refreshed = await refreshSession();
         if (refreshed) {
-            console.log('[Dashboard] Session refreshed successfully, staying on dashboard');
             // Session was refreshed, re-fetch data
             fetchReviews();
             fetchRewrites();
         } else {
-            console.log('[Dashboard] Refresh failed, redirecting to login');
             router.push('/auth/login');
         }
     };
@@ -93,7 +90,6 @@ export default function DashboardPage() {
             if (res.status === 401) {
                 if (isSigningOut) return; // Don't retry during logout
 
-                console.log('[Dashboard] fetchReviews got 401, attempting refresh...');
                 const refreshed = await refreshSession();
                 if (refreshed) {
                     // Retry the fetch with refreshed session
@@ -140,7 +136,6 @@ export default function DashboardPage() {
             if (res.status === 401) {
                 if (isSigningOut) return; // Don't retry during logout
 
-                console.log('[Dashboard] fetchRewrites got 401, attempting refresh...');
                 const refreshed = await refreshSession();
                 if (refreshed) {
                     // Retry the fetch with refreshed session

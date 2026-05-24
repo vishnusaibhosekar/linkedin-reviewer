@@ -233,10 +233,8 @@ export default function AdminRewritesPage() {
         setSelectedReview(null); // Reset previous data
         setSelectedOrder(order); // Store the order data
         try {
-            console.log('Fetching review for order:', order.review_id);
             const response = await fetch(`/api/reviews/${order.review_id}`);
             const data = await response.json();
-            console.log('Review API response:', response.status, data);
 
             if (response.ok && data.success) {
                 setSelectedReview(data.review);

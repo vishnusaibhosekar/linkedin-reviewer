@@ -60,15 +60,6 @@ export async function POST(req: NextRequest) {
             return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/payment/success?review_id=${reviewId}`,
         });
 
-        // Log session creation for traceability
-        console.log('[Checkout] Session created:', {
-            reviewId,
-            sessionId: session.session_id,
-            checkoutUrl: session.checkout_url,
-            status: (session as any).status,
-            expiresAt: (session as any).expires_at,
-        });
-
         // Persist checkout session ID to database for reconciliation
         await insforge.database
             .from('reviews')
