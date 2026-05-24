@@ -223,11 +223,9 @@ export default function NewReviewPage() {
     };
 
     const handlePayAndSubmit = async () => {
-        console.log('handlePayAndSubmit called, pendingReviewId:', pendingReviewId);
 
         // If reviewId already exists (user closed modal before), just reopen it
         if (pendingReviewId) {
-            console.log('Reusing existing reviewId, opening modal');
             setShowPaymentModal(true);
             return;
         }
@@ -286,7 +284,6 @@ export default function NewReviewPage() {
             }
 
             const reviewId = reviewResult.reviewId;
-            console.log('Review created with ID:', reviewId);
 
             // Store base64 screenshots in sessionStorage for AI processing after payment
             try {
@@ -302,7 +299,6 @@ export default function NewReviewPage() {
             setLoading(false);
 
             // Open payment modal
-            console.log('Opening payment modal...');
             setShowPaymentModal(true);
         } catch (error: any) {
             console.error('handlePayAndSubmit error:', error);

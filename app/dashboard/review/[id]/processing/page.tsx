@@ -43,10 +43,8 @@ export default function ProcessingPage() {
             // Try both keys: 'review_{id}_screenshots' (new) and 'new_review_screenshots' (legacy)
             const screenshotsJson = sessionStorage.getItem(`review_${reviewId}_screenshots`)
                 || sessionStorage.getItem('new_review_screenshots');
-            console.log('Retrieved screenshots from sessionStorage:', screenshotsJson ? 'found' : 'not found');
             const screenshots = screenshotsJson ? JSON.parse(screenshotsJson) : {};
             const screenshotBase64Array = Object.values(screenshots) as string[];
-            console.log('Screenshot base64 count:', screenshotBase64Array.length);
 
             // Step 3: Call AI Scoring with base64 images (30-90%)
             const scoreResponse = await fetch(`/api/reviews/${reviewId}/score`, {

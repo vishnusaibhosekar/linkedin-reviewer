@@ -42,7 +42,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             if (error || !data?.user) {
                 // Token might be expired - try to refresh the session
-                console.log('[Auth] getCurrentUser failed, attempting refresh...');
                 try {
                     const { data: refreshData, error: refreshError } = await insforge.auth.refreshSession(
                         {} // SDK will read refresh token from httpOnly cookie automatically
@@ -51,10 +50,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     if (cancelled) return;
 
                     if (refreshError || !refreshData?.user) {
-                        console.log('[Auth] Refresh failed, user is logged out');
                         setUser(null);
                     } else {
-                        console.log('[Auth] Session refreshed successfully');
                         setUser(refreshData.user as User);
                     }
                 } catch (refreshErr) {
@@ -91,11 +88,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             const { data, error } = await insforge.auth.refreshSession({});
             if (error || !data?.user) {
-                console.log('[Auth] Manual refresh failed');
                 setUser(null);
                 return false;
             }
-            console.log('[Auth] Manual refresh successful');
             setUser(data.user as User);
             return true;
         } catch (err) {

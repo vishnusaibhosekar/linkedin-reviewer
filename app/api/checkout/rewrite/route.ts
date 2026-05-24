@@ -59,13 +59,6 @@ export async function POST(req: NextRequest) {
             return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/review/${reviewId}/rewrite/success`,
         });
 
-        // Log session creation for traceability
-        console.log('[Checkout] Rewrite session created:', {
-            reviewId,
-            sessionId: session.session_id,
-            checkoutUrl: session.checkout_url,
-        });
-
         // Persist checkout session ID to database for reconciliation
         // Note: rewrite_orders is created after payment, so we'll update it via webhook
         // But we can store it in metadata for now

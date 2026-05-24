@@ -23,15 +23,6 @@ export async function POST(req: NextRequest) {
             key: process.env.DODO_PAYMENTS_WEBHOOK_SECRET!,
         });
 
-        // Log raw event for debugging
-        console.log('[Webhook] Raw event structure:', {
-            id: (event as any).id,
-            type: event.type,
-            dataKeys: Object.keys(event.data || {}),
-            hasAmount: 'amount' in (event.data || {}),
-            amount: (event.data as any)?.amount,
-        });
-
         const eventType = event.type;
         const data = event.data;
         // Try multiple possible locations for event ID
@@ -124,8 +115,7 @@ async function handlePaymentSucceeded(data: any, eventId?: string) {
         amount,
         currency,
         payment_id,
-        checkout_session_id,
-        dataKeys: Object.keys(data),
+        checkout_session_id
     });
 
     if (product_type === 'linkedin_review') {

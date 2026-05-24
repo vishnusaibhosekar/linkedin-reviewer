@@ -88,8 +88,6 @@ export async function POST(
                 );
             }
 
-            console.log('Fetching screenshots from storage (sessionStorage unavailable on client)...');
-
             screenshotsToUse = await Promise.all(
                 (review.screenshot_paths as string[]).map(async (storagePath: string) => {
                     const { data, error: dlError } = await insforge.storage
@@ -108,7 +106,6 @@ export async function POST(
                 })
             );
 
-            console.log(`Fetched ${screenshotsToUse.length} screenshots from storage`);
         }
 
         // Step 4: Build LLM prompt
@@ -179,7 +176,6 @@ Please analyze the complete profile and return your assessment in the following 
 }`;
 
         // Step 5: Call OpenRouter API with base64 images
-        console.log('Calling OpenRouter with', screenshotsToUse.length, 'base64 screenshots');
         const completion = await openrouter.chat.completions.create({
             model: SCORING_MODEL,
             messages: [
@@ -200,7 +196,6 @@ Please analyze the complete profile and return your assessment in the following 
             temperature: 0.3,
         });
 
-        console.log('OpenRouter response received');
 
         // Step 6: Parse and validate response
         if (!completion.choices || completion.choices.length === 0) {
