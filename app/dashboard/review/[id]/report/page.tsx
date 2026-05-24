@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth/AuthContext';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Download, CheckCircle, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -57,6 +58,7 @@ const categoryLabels: Record<string, string> = {
 export default function ReportPage() {
     const params = useParams();
     const router = useRouter();
+    const { user } = useAuth();
     const reviewId = params.id as string;
 
     const [review, setReview] = useState<ReviewData | null>(null);
@@ -66,7 +68,7 @@ export default function ReportPage() {
     useEffect(() => {
         async function fetchReview() {
             try {
-                const response = await fetch(`/api/reviews/${reviewId}`, {
+                const response = await fetch(`/api/reviews/${reviewId}?userId=${user?.id}`, {
                     credentials: 'include'
                 });
                 const result = await response.json();

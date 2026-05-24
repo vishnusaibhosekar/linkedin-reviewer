@@ -10,16 +10,25 @@ export async function POST(
         const resolvedParams = await params;
         const reviewId = resolvedParams.id;
 
-        // Parse request body to get base64 screenshots
+        // Get userId from request body (optional for internal calls)
         const requestBody = await request.json();
+        const userId = requestBody.userId;
+
+        // Parse request body to get base64 screenshots
         const screenshotBase64: string[] = requestBody.screenshotBase64 || [];
 
         // Step 1: Fetch review data
-        const { data: review, error: fetchError } = await insforge.database
+        let query = insforge.database
             .from('reviews')
             .select('*')
-            .eq('id', reviewId)
-            .single();
+            .eq('id', reviewId);
+
+        // Add ownership filter if userId provided
+        if (userId) {
+            query = query.eq('user_id', userId);
+        }
+
+        const { data: review, error: fetchError } = await query.single();
 
         if (fetchError || !review) {
             return NextResponse.json(

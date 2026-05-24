@@ -50,7 +50,7 @@ export default function RewriteIntakePage() {
     useEffect(() => {
         async function fetchReview() {
             try {
-                const response = await fetch(`/api/reviews/${reviewId}`, {
+                const response = await fetch(`/api/reviews/${reviewId}?userId=${user?.id}`, {
                     credentials: 'include'
                 });
                 const result = await response.json();

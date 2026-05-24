@@ -38,7 +38,7 @@ function PaymentSuccessContent() {
                 await new Promise(resolve => setTimeout(resolve, 2000));
 
                 // Check if review exists and has been marked as paid
-                const response = await fetch(`/api/reviews/${reviewId}`);
+                const response = await fetch(`/api/reviews/${reviewId}?userId=${user?.id}`);
                 const result = await response.json();
 
                 if (result.success && result.review) {

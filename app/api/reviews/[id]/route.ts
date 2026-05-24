@@ -9,10 +9,23 @@ export async function GET(
         const resolvedParams = await params;
         const reviewId = resolvedParams.id;
 
+        // Get userId from query params
+        const { searchParams } = new URL(request.url);
+        const userId = searchParams.get('userId');
+
+        if (!userId) {
+            return NextResponse.json(
+                { error: 'Unauthorized - userId required' },
+                { status: 401 }
+            );
+        }
+
+        // Fetch the review and verify ownership
         const { data, error } = await insforge.database
             .from('reviews')
             .select('*')
             .eq('id', reviewId)
+            .eq('user_id', userId) // Only return if user owns this review
             .single();
 
         if (error || !data) {
