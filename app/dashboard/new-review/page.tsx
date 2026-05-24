@@ -136,54 +136,82 @@ export default function NewReviewPage() {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handlePdfUpload = async (file: File): Promise<string> => {
+    const handlePdfUpload = async (file: File, retries = 2): Promise<string> => {
         const uploadForm = new FormData();
         uploadForm.append('file', file);
 
-        const response = await fetch('/api/upload/pdf', {
-            method: 'POST',
-            body: uploadForm,
-            credentials: 'include'
-        });
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
-        const result = await response.json();
+            const response = await fetch('/api/upload/pdf', {
+                method: 'POST',
+                body: uploadForm,
+                credentials: 'include',
+                signal: controller.signal
+            });
 
-        if (!response.ok) {
-            throw new Error(result.error || 'PDF upload failed');
+            clearTimeout(timeoutId);
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'PDF upload failed');
+            }
+
+            return result.path;
+        } catch (error: any) {
+            if (retries > 0 && error.name !== 'AbortError') {
+                console.warn(`PDF upload failed, retrying... (${retries} attempts left)`, error);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+                return handlePdfUpload(file, retries - 1);
+            }
+            throw error;
         }
-
-        return result.path;
     };
 
-    const handleScreenshotUpload = async (file: File, slotName: string): Promise<string> => {
+    const handleScreenshotUpload = async (file: File, slotName: string, retries = 2): Promise<string> => {
         const uploadForm = new FormData();
         uploadForm.append('file', file);
         uploadForm.append('slot', slotName);
 
-        // Convert to base64 for AI processing (run concurrently with upload)
-        const [response, base64] = await Promise.all([
-            fetch('/api/upload/screenshots', {
-                method: 'POST',
-                body: uploadForm,
-                credentials: 'include'
-            }),
-            new Promise<string>((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result as string);
-                reader.readAsDataURL(file);
-            })
-        ]);
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
-        const result = await response.json();
+            // Convert to base64 for AI processing (run concurrently with upload)
+            const [response, base64] = await Promise.all([
+                fetch('/api/upload/screenshots', {
+                    method: 'POST',
+                    body: uploadForm,
+                    credentials: 'include',
+                    signal: controller.signal
+                }),
+                new Promise<string>((resolve) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.readAsDataURL(file);
+                })
+            ]);
 
-        if (!response.ok) {
-            throw new Error(result.error || `${slotName} upload failed`);
+            clearTimeout(timeoutId);
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || `${slotName} upload failed`);
+            }
+
+            // Store in ref for synchronous access by payment success handler
+            base64ScreenshotsRef.current[slotName] = base64;
+
+            return result.path;
+        } catch (error: any) {
+            if (retries > 0 && error.name !== 'AbortError') {
+                console.warn(`${slotName} upload failed, retrying... (${retries} attempts left)`, error);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+                return handleScreenshotUpload(file, slotName, retries - 1);
+            }
+            throw error;
         }
-
-        // Store in ref for synchronous access by payment success handler
-        base64ScreenshotsRef.current[slotName] = base64;
-
-        return result.path;
     };
 
     // Uploads PDF + all 4 screenshots in parallel — called as soon as modal opens
@@ -230,7 +258,15 @@ export default function NewReviewPage() {
             return;
         }
 
+        // Validate user is authenticated
+        if (!user?.id) {
+            toast.error('Authentication required. Please log in again.');
+            router.push('/auth/login');
+            return;
+        }
+
         setLoading(true);
+        setPrepareStatus('Uploading files...');
 
         // Reset base64 ref for fresh uploads
         base64ScreenshotsRef.current = {};
@@ -240,8 +276,15 @@ export default function NewReviewPage() {
         uploadResultRef.current = uploadPromise;
 
         try {
-            // Wait for uploads to complete
-            const { pdfPath, screenshotPaths } = await uploadPromise;
+            // Wait for uploads to complete with timeout
+            const { pdfPath, screenshotPaths } = await Promise.race([
+                uploadPromise,
+                new Promise<never>((_, reject) =>
+                    setTimeout(() => reject(new Error('Upload timeout - please check your internet connection')), 120000)
+                )
+            ]);
+
+            setPrepareStatus('Creating review...');
 
             // Store upload data in sessionStorage for payment success page
             sessionStorage.setItem('new_review_pdf', JSON.stringify({
@@ -263,7 +306,7 @@ export default function NewReviewPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    userId: user?.id,
+                    userId: user.id,
                     fullName: formData.fullName,
                     professionalStatus: formData.professionalStatus,
                     workExperience: formData.workExperience,
@@ -302,7 +345,20 @@ export default function NewReviewPage() {
             setShowPaymentModal(true);
         } catch (error: any) {
             console.error('handlePayAndSubmit error:', error);
-            toast.error(error.message || 'Failed to prepare review. Please try again.');
+
+            // Provide user-friendly error messages
+            let errorMessage = 'Failed to prepare review. Please try again.';
+            if (error.message?.includes('timeout')) {
+                errorMessage = 'Upload took too long. Please check your internet connection and try again.';
+            } else if (error.message?.includes('409') || error.message?.includes('ALREADY_EXISTS')) {
+                errorMessage = 'File upload conflict. Please refresh and try again.';
+            } else if (error.message?.includes('STORAGE_INVALID_PARAMETER')) {
+                errorMessage = 'Invalid file format. Please ensure files are valid PDFs or images.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+
+            toast.error(errorMessage);
             setLoading(false);
         }
     };

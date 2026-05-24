@@ -18,21 +18,46 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // Validate Dodo API key is configured
+        if (!process.env.DODO_PAYMENTS_API_KEY) {
+            console.error('[Checkout] DODO_PAYMENTS_API_KEY is not configured');
+            return NextResponse.json(
+                { error: 'Payment system not configured. Please contact support.' },
+                { status: 500 }
+            );
+        }
+
         // Get product ID based on environment and region
         const isLiveMode = process.env.DODO_PAYMENTS_ENVIRONMENT === 'live_mode';
         const isIndianCustomer = region === 'IN';
 
         const reviewProductId = isLiveMode
             ? isIndianCustomer
-                ? process.env.DODO_LIVE_REVIEW_PRODUCT_ID_IN!
-                : process.env.DODO_LIVE_REVIEW_PRODUCT_ID_US!
+                ? process.env.DODO_LIVE_REVIEW_PRODUCT_ID_IN
+                : process.env.DODO_LIVE_REVIEW_PRODUCT_ID_US
             : isIndianCustomer
-                ? process.env.DODO_TEST_REVIEW_PRODUCT_ID_IN!
-                : process.env.DODO_TEST_REVIEW_PRODUCT_ID_US!;
+                ? process.env.DODO_TEST_REVIEW_PRODUCT_ID_IN
+                : process.env.DODO_TEST_REVIEW_PRODUCT_ID_US;
 
         if (!reviewProductId) {
+            console.error('[Checkout] Product ID not configured:', {
+                isLiveMode,
+                isIndianCustomer,
+                region,
+                DODO_PAYMENTS_ENVIRONMENT: process.env.DODO_PAYMENTS_ENVIRONMENT
+            });
             return NextResponse.json(
-                { error: 'Product ID not configured for this region' },
+                { error: 'Payment product not available for your region. Please contact support.' },
+                { status: 500 }
+            );
+        }
+
+        // Validate APP_URL is configured for redirect
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+        if (!appUrl) {
+            console.error('[Checkout] NEXT_PUBLIC_APP_URL is not configured');
+            return NextResponse.json(
+                { error: 'Application URL not configured. Please contact support.' },
                 { status: 500 }
             );
         }
