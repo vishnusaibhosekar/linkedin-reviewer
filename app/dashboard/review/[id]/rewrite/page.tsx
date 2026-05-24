@@ -133,17 +133,22 @@ export default function RewriteIntakePage() {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleResumeUpload = async (file: File) => {
+    const handleResumeUpload = async (file: File, retries = 2) => {
         setUploading(true);
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
             const uploadFormData = new FormData();
             uploadFormData.append('file', file);
 
             const response = await fetch('/api/upload/resume', {
                 method: 'POST',
                 body: uploadFormData,
+                signal: controller.signal
             });
 
+            clearTimeout(timeoutId);
             const result = await response.json();
 
             if (!response.ok) {
@@ -158,7 +163,13 @@ export default function RewriteIntakePage() {
 
             toast.success('Resume uploaded successfully');
         } catch (error: any) {
-            toast.error(error.message);
+            if (retries > 0 && error.name !== 'AbortError') {
+                console.warn(`Resume upload failed, retrying... (${retries} attempts left)`, error);
+                setUploading(false);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+                return handleResumeUpload(file, retries - 1);
+            }
+            toast.error(error.message || 'Failed to upload resume');
         } finally {
             setUploading(false);
         }
@@ -174,26 +185,38 @@ export default function RewriteIntakePage() {
     };
 
     const handleSubmitAndPay = async () => {
+        // Validate user is authenticated
+        if (!user?.id) {
+            toast.error('Authentication required. Please log in again.');
+            router.push('/auth/login');
+            return;
+        }
+
         setLoading(true);
         try {
             // Create rewrite order in database BEFORE payment (status: pending_payment)
-            const response = await fetch('/api/rewrites', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    userId: user?.id,
-                    reviewId,
-                    resumePath: formData.resumePath,
-                    keyAccomplishments: formData.keyAccomplishments,
-                    targetRoles: formData.targetRoles,
-                    tonePreference: formData.tonePreference,
-                    sectionsToImprove: formData.sectionsToImprove,
-                    specialRequests: formData.specialRequests,
-                    contactEmail: formData.contactEmail
+            const response = await Promise.race([
+                fetch('/api/rewrites', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        userId: user.id,
+                        reviewId,
+                        resumePath: formData.resumePath,
+                        keyAccomplishments: formData.keyAccomplishments,
+                        targetRoles: formData.targetRoles,
+                        tonePreference: formData.tonePreference,
+                        sectionsToImprove: formData.sectionsToImprove,
+                        specialRequests: formData.specialRequests,
+                        contactEmail: formData.contactEmail
+                    }),
                 }),
-            });
+                new Promise<Response>((_, reject) =>
+                    setTimeout(() => reject(new Error('Request timeout - please check your connection')), 30000)
+                )
+            ]);
 
             const result = await response.json();
 
@@ -207,7 +230,14 @@ export default function RewriteIntakePage() {
             // Open payment modal
             setShowPaymentModal(true);
         } catch (error: any) {
-            toast.error(error.message);
+            console.error('handleSubmitAndPay error:', error);
+            let errorMessage = 'Failed to create rewrite order. Please try again.';
+            if (error.message?.includes('timeout')) {
+                errorMessage = 'Request took too long. Please check your internet connection.';
+            } else if (error.message) {
+                errorMessage = error.message;
+            }
+            toast.error(errorMessage);
         } finally {
             setLoading(false);
         }
