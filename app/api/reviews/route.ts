@@ -78,10 +78,21 @@ export async function POST(request: NextRequest) {
 // GET - List user's reviews
 export async function GET(request: NextRequest) {
     try {
-        // RLS policy filters reviews by auth.uid() — no manual auth check needed
+        const { searchParams } = new URL(request.url);
+        const userId = searchParams.get('userId');
+
+        if (!userId) {
+            return NextResponse.json(
+                { error: 'Unauthorized - userId required' },
+                { status: 401 }
+            );
+        }
+
+        // Filter reviews to only return those belonging to the authenticated user
         const { data, error } = await insforge.database
             .from('reviews')
             .select('id, overall_score, score_band, status, created_at, full_name, professional_status')
+            .eq('user_id', userId)
             .order('created_at', { ascending: false });
 
         if (error) {

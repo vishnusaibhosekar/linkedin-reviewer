@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -40,15 +40,27 @@ export default function DashboardPage() {
     const [loadingReviews, setLoadingReviews] = useState(true);
     const [rewrites, setRewrites] = useState<RewriteOrder[]>([]);
     const [loadingRewrites, setLoadingRewrites] = useState(true);
+    const abortControllerRef = useRef<AbortController | null>(null);
 
     useEffect(() => {
-        if (!loading && !user && !isSigningOut) {
+        // Don't do anything if user is signing out
+        if (isSigningOut) return;
+
+        if (!loading && !user) {
             // Try to refresh session before redirecting to login
             handleAuthExpired();
         } else if (!loading && user) {
             fetchReviews();
             fetchRewrites();
         }
+
+        // Cleanup: abort pending requests on unmount
+        return () => {
+            if (abortControllerRef.current) {
+                abortControllerRef.current.abort();
+                abortControllerRef.current = null;
+            }
+        };
     }, [user, loading, router, isSigningOut]);
 
     const handleAuthExpired = async () => {
@@ -67,10 +79,20 @@ export default function DashboardPage() {
 
     const fetchReviews = async () => {
         try {
-            const res = await fetch('/api/reviews', { credentials: 'include' });
+            // Create new abort controller if one doesn't exist
+            if (!abortControllerRef.current) {
+                abortControllerRef.current = new AbortController();
+            }
 
-            // If unauthorized, try to refresh session
+            const res = await fetch(`/api/reviews?userId=${user?.id}`, {
+                credentials: 'include',
+                signal: abortControllerRef.current.signal
+            });
+
+            // If unauthorized, try to refresh session (but not during sign out)
             if (res.status === 401) {
+                if (isSigningOut) return; // Don't retry during logout
+
                 console.log('[Dashboard] fetchReviews got 401, attempting refresh...');
                 const refreshed = await refreshSession();
                 if (refreshed) {
@@ -90,7 +112,12 @@ export default function DashboardPage() {
                 );
                 setReviews(activeReviews);
             }
-        } catch (error) {
+        } catch (error: any) {
+            // Ignore aborted requests (happens during logout/navigation)
+            if (error.name === 'AbortError') {
+                return;
+            }
+            // Only log other errors, don't crash
             console.error('Failed to fetch reviews:', error);
         } finally {
             setLoadingReviews(false);
@@ -99,10 +126,20 @@ export default function DashboardPage() {
 
     const fetchRewrites = async () => {
         try {
-            const res = await fetch(`/api/rewrites?userId=${user?.id}`, { credentials: 'include' });
+            // Reuse the same abort controller
+            if (!abortControllerRef.current) {
+                abortControllerRef.current = new AbortController();
+            }
 
-            // If unauthorized, try to refresh session
+            const res = await fetch(`/api/rewrites?userId=${user?.id}`, {
+                credentials: 'include',
+                signal: abortControllerRef.current.signal
+            });
+
+            // If unauthorized, try to refresh session (but not during sign out)
             if (res.status === 401) {
+                if (isSigningOut) return; // Don't retry during logout
+
                 console.log('[Dashboard] fetchRewrites got 401, attempting refresh...');
                 const refreshed = await refreshSession();
                 if (refreshed) {
@@ -125,7 +162,12 @@ export default function DashboardPage() {
                 );
                 setRewrites(activeRewrites);
             }
-        } catch (error) {
+        } catch (error: any) {
+            // Ignore aborted requests (happens during logout/navigation)
+            if (error.name === 'AbortError') {
+                return;
+            }
+            // Only log other errors, don't crash
             console.error('Failed to fetch rewrites:', error);
         } finally {
             setLoadingRewrites(false);
@@ -148,8 +190,19 @@ export default function DashboardPage() {
 
     const handleSignOut = async () => {
         setIsSigningOut(true);
+
+        // Abort any pending fetch requests
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+
         await signOut();
-        router.push("/");
+        // Small delay to ensure isSigningOut state is processed before redirect
+        // This prevents useEffect from trying to refresh session
+        setTimeout(() => {
+            router.push("/");
+        }, 50);
     };
 
     const StatusBadge = ({ status }: { status: string }) => {

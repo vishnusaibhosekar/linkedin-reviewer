@@ -13,12 +13,22 @@ export async function GET(
         const resolvedParams = await params;
         const reviewId = resolvedParams.id;
 
+        // Get userId from query params (optional for internal calls)
+        const { searchParams } = new URL(request.url);
+        const userId = searchParams.get('userId');
+
         // Fetch review record
-        const { data: review, error: fetchError } = await insforge.database
+        let query = insforge.database
             .from('reviews')
             .select('*')
-            .eq('id', reviewId)
-            .single();
+            .eq('id', reviewId);
+
+        // Add ownership filter if userId provided
+        if (userId) {
+            query = query.eq('user_id', userId);
+        }
+
+        const { data: review, error: fetchError } = await query.single();
 
         if (fetchError || !review) {
             return NextResponse.json(
