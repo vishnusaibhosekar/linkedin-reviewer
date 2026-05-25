@@ -21,8 +21,11 @@ import {
     Target,
     Lightbulb,
     ChevronDown,
-    ChevronUp
+    ChevronUp,
+    PenTool,
+    Save
 } from 'lucide-react';
+import LinkedInProfilePreview from '@/app/components/LinkedInProfilePreview';
 
 interface RewriteOrder {
     id: string;
@@ -81,6 +84,7 @@ interface ReviewData {
     weaknesses: string[];
     pdf_storage_path: string;
     screenshot_paths: string[];
+    parsed_pdf_text?: string;
     created_at: string;
 }
 
@@ -96,6 +100,8 @@ export default function AdminRewritesPage() {
     const [selectedOrder, setSelectedOrder] = useState<RewriteOrder | null>(null);
     const [loadingReview, setLoadingReview] = useState(false);
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+    const [previewRewriteOpen, setPreviewRewriteOpen] = useState(false);
+    const [savingProfile, setSavingProfile] = useState(false);
 
     useEffect(() => {
         fetchOrders();
@@ -233,7 +239,7 @@ export default function AdminRewritesPage() {
         setSelectedReview(null); // Reset previous data
         setSelectedOrder(order); // Store the order data
         try {
-            const response = await fetch(`/api/reviews/${order.review_id}`);
+            const response = await fetch(`/api/reviews/${order.review_id}?userId=${order.user_id}`);
             const data = await response.json();
 
             if (response.ok && data.success) {
@@ -255,6 +261,21 @@ export default function AdminRewritesPage() {
             ...prev,
             [section]: !prev[section]
         }));
+    };
+
+    const handleSaveProfile = async (profileData: any) => {
+        setSavingProfile(true);
+        try {
+            // TODO: Save to database when AI integration is ready
+            console.log('Profile data to save:', profileData);
+            toast.success('Profile saved successfully!');
+            // For now, just close the modal
+            setPreviewRewriteOpen(false);
+        } catch (error) {
+            toast.error('Failed to save profile');
+        } finally {
+            setSavingProfile(false);
+        }
     };
 
     const getScoreColor = (score: number) => {
@@ -606,16 +627,25 @@ export default function AdminRewritesPage() {
                                 <h2 className="text-xl font-bold text-gray-900">Review Details</h2>
                                 <p className="text-sm text-gray-500 mt-0.5">AI scoring analysis and feedback</p>
                             </div>
-                            <button
-                                onClick={() => {
-                                    setViewModalOpen(false);
-                                    setSelectedReview(null);
-                                    setSelectedOrder(null);
-                                }}
-                                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                <X className="w-5 h-5 text-gray-600" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setPreviewRewriteOpen(true)}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg text-sm font-medium shadow-sm shadow-purple-600/20 transition-all"
+                                >
+                                    <PenTool className="w-4 h-4" />
+                                    Preview Rewrite
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setViewModalOpen(false);
+                                        setSelectedReview(null);
+                                        setSelectedOrder(null);
+                                    }}
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5 text-gray-600" />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Modal Content */}
@@ -870,6 +900,76 @@ export default function AdminRewritesPage() {
                                     <p className="text-gray-600">Failed to load review details</p>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Preview Rewrite Modal */}
+            {previewRewriteOpen && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-7xl w-full h-[95vh] overflow-hidden flex flex-col">
+                        {/* Modal Header */}
+                        <div className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => setPreviewRewriteOpen(false)}
+                                    className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                </button>
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-900">Preview LinkedIn Rewrite</h2>
+                                    <p className="text-sm text-gray-500 mt-0.5">Edit profile fields and see live changes</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={handleSaveProfile}
+                                    disabled={savingProfile}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white rounded-lg text-sm font-medium shadow-sm shadow-blue-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {savingProfile ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="w-4 h-4" />
+                                            Save Profile
+                                        </>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={() => setPreviewRewriteOpen(false)}
+                                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5 text-gray-600" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="flex-1 overflow-hidden">
+                            <LinkedInProfilePreview
+                                initialData={{
+                                    name: selectedReview?.full_name || '',
+                                    headline: '',
+                                    about: '',
+                                    location: '',
+                                    experience: [],
+                                    education: [],
+                                    skills: [],
+                                    achievements: [],
+                                    recommendations: [],
+                                }}
+                                onSave={handleSaveProfile}
+                                isSaving={savingProfile}
+                                hideSaveButton={true}
+                            />
                         </div>
                     </div>
                 </div>
