@@ -43,7 +43,7 @@ export default function Logo({
 
     const LogoText = showText && (
         <span className={`${config.text} font-semibold text-[#172B4D]`}>
-            LinkedIn Reviewer
+            Career Cube - LinkedIn Reviewer
         </span>
     );
 

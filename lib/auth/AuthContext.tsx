@@ -10,6 +10,9 @@ interface User {
     avatar_url?: string;
     phone?: string;
     provider?: string;
+    emailVerified?: boolean;
+    createdAt?: string;
+    updatedAt?: string;
     profile?: {
         name?: string;
         avatar_url?: string;
