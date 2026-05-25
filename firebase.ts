@@ -6,12 +6,13 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyC5KsSYw7YYSmEL8DkiIH7HjzalEZN9H94",
-    authDomain: "notes-app-40b02.firebaseapp.com",
-    projectId: "notes-app-40b02",
-    storageBucket: "notes-app-40b02.firebasestorage.app",
-    messagingSenderId: "839183819110",
-    appId: "1:839183819110:web:cd78900764ae5f312ca8a7"
+    apiKey: "AIzaSyB6Jp_oxizrMbZmPCBzm-iBZU5cYApyucw",
+    authDomain: "linkedin-reviewer.firebaseapp.com",
+    projectId: "linkedin-reviewer",
+    storageBucket: "linkedin-reviewer.firebasestorage.app",
+    messagingSenderId: "1088552255073",
+    appId: "1:1088552255073:web:584a9da57c6e36027e3420",
+    measurementId: "G-0QRYR75Y0M"
 };
 
 // Initialize Firebase

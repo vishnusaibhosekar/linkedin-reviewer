@@ -48,7 +48,14 @@ export default function DashboardPage() {
 
         if (!loading && !user) {
             // Try to refresh session before redirecting to login
-            handleAuthExpired();
+            refreshSession().then((success) => {
+                if (!success) {
+                    router.push("/auth/login");
+                }
+            });
+        } else if (!loading && user && !user.profile?.phone) {
+            // User exists but hasn't completed onboarding
+            router.push("/onboarding");
         } else if (!loading && user) {
             fetchReviews();
             fetchRewrites();
