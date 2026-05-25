@@ -289,15 +289,65 @@ export default function AdminRewritesPage() {
     };
 
     const handleSaveProfile = async (profileData: any) => {
+        if (!selectedOrder?.id) {
+            toast.error('No rewrite order selected');
+            return;
+        }
+
         setSavingProfile(true);
         try {
-            // TODO: Save to database when AI integration is ready
-            console.log('Profile data to save:', profileData);
-            toast.success('Profile saved successfully!');
-            // For now, just close the modal
+            // Create a clean copy of the profile data to avoid circular references
+            const cleanProfileData = {
+                name: profileData.name || '',
+                headline: profileData.headline || '',
+                about: profileData.about || '',
+                location: profileData.location || '',
+                connections: profileData.connections || '',
+                experience: (profileData.experience || []).map((exp: any) => ({
+                    title: exp.title || '',
+                    company: exp.company || '',
+                    duration: exp.duration || '',
+                    description: exp.description || '',
+                })),
+                education: (profileData.education || []).map((edu: any) => ({
+                    school: edu.school || '',
+                    degree: edu.degree || '',
+                    field: edu.field || '',
+                    year: edu.year || '',
+                })),
+                skills: (profileData.skills || []).filter((s: any) => typeof s === 'string'),
+                achievements: (profileData.achievements || []).map((ach: any) => ({
+                    name: ach.name || '',
+                    issuer: ach.issuer || '',
+                    date: ach.date || '',
+                    url: ach.url || '',
+                })),
+                recommendations: (profileData.recommendations || []).filter((r: any) => typeof r === 'string'),
+            };
+
+            // Save rewritten profile to database
+            const response = await fetch(`/api/rewrites/${selectedOrder.id}/save-rewritten`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ profileData: cleanProfileData }),
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to save profile');
+            }
+
+            toast.success('Profile saved successfully! Rewrite order marked as completed.');
+
+            // Close the modal
             setPreviewRewriteOpen(false);
-        } catch (error) {
-            toast.error('Failed to save profile');
+
+            // Refresh the rewrite orders list
+            fetchOrders();
+        } catch (error: any) {
+            console.error('Save profile error:', error);
+            toast.error(error.message || 'Failed to save profile');
         } finally {
             setSavingProfile(false);
         }
