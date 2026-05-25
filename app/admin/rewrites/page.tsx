@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
@@ -25,7 +25,7 @@ import {
     PenTool,
     Save
 } from 'lucide-react';
-import LinkedInProfilePreview from '@/app/components/LinkedInProfilePreview';
+import LinkedInProfilePreview, { LinkedInProfilePreviewRef } from '@/app/components/LinkedInProfilePreview';
 
 interface RewriteOrder {
     id: string;
@@ -127,6 +127,8 @@ export default function AdminRewritesPage() {
     const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
     const [previewRewriteOpen, setPreviewRewriteOpen] = useState(false);
     const [savingProfile, setSavingProfile] = useState(false);
+    const [extractingProfile, setExtractingProfile] = useState(false);
+    const previewRef = useRef<LinkedInProfilePreviewRef>(null);
 
     useEffect(() => {
         fetchOrders();
@@ -288,9 +290,28 @@ export default function AdminRewritesPage() {
         }));
     };
 
-    const handleSaveProfile = async (profileData: any) => {
+    const handleSaveProfile = async () => {
         if (!selectedOrder?.id) {
             toast.error('No rewrite order selected');
+            return;
+        }
+
+        // Get profile data from the preview component via ref
+        const profileData = previewRef.current?.getProfileData();
+
+        if (!profileData) {
+            toast.error('Failed to get profile data');
+            return;
+        }
+
+        // Validate that at least some fields are filled
+        const hasName = profileData.name?.trim();
+        const hasHeadline = profileData.headline?.trim();
+        const hasAbout = profileData.about?.trim();
+        const hasExperience = profileData.experience?.length > 0;
+
+        if (!hasName && !hasHeadline && !hasAbout && !hasExperience) {
+            toast.error('Please fill in at least some profile fields before saving');
             return;
         }
 
@@ -351,6 +372,40 @@ export default function AdminRewritesPage() {
         } finally {
             setSavingProfile(false);
         }
+    };
+
+    const handleOpenPreview = async () => {
+        // If parsed_profile_data doesn't exist, extract it first
+        if (!selectedReview?.parsed_profile_data) {
+            setExtractingProfile(true);
+            try {
+                const extractResponse = await fetch(`/api/reviews/${selectedReview?.id}/extract-profile`);
+                const extractResult = await extractResponse.json();
+
+                if (!extractResponse.ok) {
+                    throw new Error(extractResult.error || 'Failed to extract profile data');
+                }
+
+                // Refetch the review to get the newly extracted data
+                const reviewResponse = await fetch(`/api/reviews/${selectedReview?.id}?userId=${selectedOrder?.user_id}`);
+                const reviewResult = await reviewResponse.json();
+
+                if (reviewResponse.ok && reviewResult.success) {
+                    setSelectedReview(reviewResult.review);
+                }
+
+                toast.success('Profile data extracted! Opening preview...');
+            } catch (error: any) {
+                console.error('Extract profile error:', error);
+                toast.error(error.message || 'Failed to extract profile data');
+                return;
+            } finally {
+                setExtractingProfile(false);
+            }
+        }
+
+        // Open the preview modal
+        setPreviewRewriteOpen(true);
     };
 
     const getScoreColor = (score: number) => {
@@ -704,11 +759,21 @@ export default function AdminRewritesPage() {
                             </div>
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => setPreviewRewriteOpen(true)}
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg text-sm font-medium shadow-sm shadow-purple-600/20 transition-all"
+                                    onClick={handleOpenPreview}
+                                    disabled={extractingProfile}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg text-sm font-medium shadow-sm shadow-purple-600/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <PenTool className="w-4 h-4" />
-                                    Preview Rewrite
+                                    {extractingProfile ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Extracting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <PenTool className="w-4 h-4" />
+                                            Preview Rewrite
+                                        </>
+                                    )}
                                 </button>
                                 <button
                                     onClick={() => {
@@ -1030,6 +1095,7 @@ export default function AdminRewritesPage() {
                         {/* Modal Content */}
                         <div className="flex-1 overflow-hidden">
                             <LinkedInProfilePreview
+                                ref={previewRef}
                                 initialData={{
                                     name: selectedReview?.parsed_profile_data?.name || selectedReview?.full_name || '',
                                     headline: selectedReview?.parsed_profile_data?.headline || '',

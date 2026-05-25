@@ -433,8 +433,19 @@ export default function DashboardPage() {
                                                 </p>
                                             )}
                                         </div>
-                                        <div className="text-right space-y-2 flex-shrink-0 ml-4">
+                                        <div className="flex flex-col items-end gap-2 flex-shrink-0 ml-4">
                                             <StatusBadge status={rewrite.status} />
+                                            {rewrite.status === 'completed' && (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => router.push(`/dashboard/rewrite/${rewrite.id}/view`)}
+                                                    className="border-green-300 text-green-700 hover:bg-green-50"
+                                                >
+                                                    <FileText className="w-4 h-4 mr-2" />
+                                                    View Rewritten Profile
+                                                </Button>
+                                            )}
                                             {rewrite.deliverable_path && (
                                                 <Button
                                                     variant="outline"

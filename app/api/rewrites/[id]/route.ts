@@ -21,7 +21,7 @@ export async function GET(
                     created_at
                 )
             `)
-            .eq('review_id', rewriteId)  // Query by review_id, not rewrite order id
+            .eq('id', rewriteId)  // Query by rewrite order id
             .single();
 
         if (error || !data) {
