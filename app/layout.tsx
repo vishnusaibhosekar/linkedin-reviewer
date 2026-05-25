@@ -9,7 +9,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "LinkedIn Reviewer",
+  title: "Career Cube - LinkedIn Reviewer",
   description: "Analyze and improve your LinkedIn profile",
 };
 

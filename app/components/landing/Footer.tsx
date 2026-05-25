@@ -46,7 +46,7 @@ export default function Footer() {
                 <div className="mt-8 sm:mt-10 md:mt-12 border-t border-[#DFE1E6] pt-6 sm:pt-8">
                     <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
                         <p className="text-xs sm:text-sm text-[#6B778C]">
-                            © {new Date().getFullYear()} LinkedIn Reviewer. All rights reserved.
+                            © {new Date().getFullYear()} Career Cube. All rights reserved.
                         </p>
                         <div className="flex gap-4 sm:gap-6 text-xs sm:text-sm text-[#6B778C]">
                             <Link href="#" className="hover:text-[#0052CC] transition-colors">

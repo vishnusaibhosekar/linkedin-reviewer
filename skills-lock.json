@@ -25,6 +25,12 @@
       "skillPath": "dodo-payments/best-practices/SKILL.md",
       "computedHash": "3eff4916cbee50e3508233c7ca5f631d85e1a11a59464e7a44af479c0eb4c35a"
     },
+    "firebase-auth-basics": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/firebase-auth-basics/SKILL.md",
+      "computedHash": "a68238619839f44f3b4c7d02d0c96bc05df2b018edd62dd299c964ce871d80a3"
+    },
     "license-keys": {
       "source": "dodopayments/skills",
       "sourceType": "github",

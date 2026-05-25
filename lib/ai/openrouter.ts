@@ -11,7 +11,7 @@ export const openrouter = new OpenAI({
     apiKey: apiKey,
     defaultHeaders: {
         'HTTP-Referer': process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://linkedin-reviewer.app',
-        'X-Title': 'LinkedIn Reviewer',
+        'X-Title': 'Career Cube - LinkedIn Reviewer',
     },
 });
 
