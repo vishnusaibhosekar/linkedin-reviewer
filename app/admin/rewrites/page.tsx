@@ -85,6 +85,31 @@ interface ReviewData {
     pdf_storage_path: string;
     screenshot_paths: string[];
     parsed_pdf_text?: string;
+    parsed_profile_data?: {
+        name?: string;
+        headline?: string;
+        about?: string;
+        location?: string;
+        experience?: Array<{
+            title?: string;
+            company?: string;
+            duration?: string;
+            description?: string;
+        }>;
+        education?: Array<{
+            institution?: string;
+            degree?: string;
+            field?: string;
+            duration?: string;
+        }>;
+        skills?: string[];
+        achievements?: Array<{
+            title?: string;
+            issuer?: string;
+            date?: string;
+        }>;
+        recommendations?: string[];
+    };
     created_at: string;
 }
 
@@ -956,15 +981,29 @@ export default function AdminRewritesPage() {
                         <div className="flex-1 overflow-hidden">
                             <LinkedInProfilePreview
                                 initialData={{
-                                    name: selectedReview?.full_name || '',
-                                    headline: '',
-                                    about: '',
-                                    location: '',
-                                    experience: [],
-                                    education: [],
-                                    skills: [],
-                                    achievements: [],
-                                    recommendations: [],
+                                    name: selectedReview?.parsed_profile_data?.name || selectedReview?.full_name || '',
+                                    headline: selectedReview?.parsed_profile_data?.headline || '',
+                                    about: selectedReview?.parsed_profile_data?.about || '',
+                                    location: selectedReview?.parsed_profile_data?.location || '',
+                                    experience: selectedReview?.parsed_profile_data?.experience?.map(exp => ({
+                                        title: exp.title || '',
+                                        company: exp.company || '',
+                                        duration: exp.duration || '',
+                                        description: exp.description || '',
+                                    })) || [],
+                                    education: selectedReview?.parsed_profile_data?.education?.map(edu => ({
+                                        school: edu.institution || '',
+                                        degree: edu.degree || '',
+                                        field: edu.field || '',
+                                        year: edu.duration || '',
+                                    })) || [],
+                                    skills: selectedReview?.parsed_profile_data?.skills || [],
+                                    achievements: selectedReview?.parsed_profile_data?.achievements?.map(ach => ({
+                                        name: ach.title || '',
+                                        issuer: ach.issuer || '',
+                                        date: ach.date || '',
+                                    })) || [],
+                                    recommendations: selectedReview?.parsed_profile_data?.recommendations || [],
                                 }}
                                 onSave={handleSaveProfile}
                                 isSaving={savingProfile}
