@@ -12,14 +12,18 @@ export default function ProcessingPage() {
     const reviewId = params.id as string;
     const hasStarted = useRef(false); // prevent double-fire from React StrictMode
     const [progress, setProgress] = useState(0);
-    const [status, setStatus] = useState<'uploading' | 'parsing' | 'analyzing' | 'scoring' | 'complete' | 'error'>('uploading');
+    const [status, setStatus] = useState<'uploading' | 'parsing' | 'processing_screenshots' | 'extracting' | 'analyzing' | 'scoring' | 'recommendations' | 'finalizing' | 'complete' | 'error'>('uploading');
     const [errorMessage, setErrorMessage] = useState<string>('');
 
     const steps = [
         { label: 'Uploading your files', status: 'uploading' },
-        { label: 'Parsing your LinkedIn data', status: 'parsing' },
+        { label: 'Extracting text from LinkedIn PDF', status: 'parsing' },
+        { label: 'Processing profile screenshots', status: 'processing_screenshots' },
+        { label: 'Extracting structured profile data with AI', status: 'extracting' },
         { label: 'Analyzing profile optimization', status: 'analyzing' },
-        { label: 'Generating your score', status: 'scoring' },
+        { label: 'Scoring across 9 categories', status: 'scoring' },
+        { label: 'Generating personalized recommendations', status: 'recommendations' },
+        { label: 'Finalizing your review report', status: 'finalizing' },
     ];
 
     const startProcessing = useCallback(async () => {
@@ -28,16 +32,27 @@ export default function ProcessingPage() {
         setErrorMessage('');
 
         try {
-            // Step 1: Parse PDF (10-30%)
-            const parseResponse = await fetch(`/api/reviews/${reviewId}/parse-pdf`);
-            const parseResult = await parseResponse.json();
+            // Step 1: Extract profile data (parses PDF + screenshots) (10-40%)
+            setStatus('parsing');
+            setProgress(15);
 
-            if (!parseResponse.ok) {
-                throw new Error(parseResult.error || 'Failed to parse PDF');
+            const extractResponse = await fetch(`/api/reviews/${reviewId}/extract-profile`);
+
+            setStatus('processing_screenshots');
+            setProgress(25);
+
+            const extractResult = await extractResponse.json();
+
+            if (!extractResponse.ok) {
+                throw new Error(extractResult.error || 'Failed to extract profile data');
             }
 
-            setProgress(30);
-            setStatus('analyzing');
+            setStatus('extracting');
+            setProgress(35);
+
+            // Simulate extraction progress (the API call already completed, but show UX feedback)
+            await new Promise(resolve => setTimeout(resolve, 500));
+            setProgress(40);
 
             // Step 2: Get base64 screenshots from sessionStorage
             // Try both keys: 'review_{id}_screenshots' (new) and 'new_review_screenshots' (legacy)
@@ -46,7 +61,10 @@ export default function ProcessingPage() {
             const screenshots = screenshotsJson ? JSON.parse(screenshotsJson) : {};
             const screenshotBase64Array = Object.values(screenshots) as string[];
 
-            // Step 3: Call AI Scoring with base64 images (30-90%)
+            // Step 3: Call AI Scoring with base64 images (40-85%)
+            setStatus('analyzing');
+            setProgress(45);
+
             const scoreResponse = await fetch(`/api/reviews/${reviewId}/score`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -54,6 +72,9 @@ export default function ProcessingPage() {
                     screenshotBase64: screenshotBase64Array
                 }),
             });
+
+            setStatus('scoring');
+            setProgress(60);
 
             const scoreResult = await scoreResponse.json();
 
@@ -68,10 +89,17 @@ export default function ProcessingPage() {
                 throw new Error(scoreResult.error || 'AI scoring failed');
             }
 
-            setProgress(90);
-            setStatus('scoring');
+            setStatus('recommendations');
+            setProgress(80);
 
-            // Step 4: Complete (90-100%)
+            // Step 4: Finalize (85-100%)
+            setStatus('finalizing');
+            setProgress(90);
+
+            // Small delay for UX polish
+            await new Promise(resolve => setTimeout(resolve, 300));
+            setProgress(95);
+
             setProgress(100);
             setStatus('complete');
             toast.success('Your LinkedIn review is complete!');

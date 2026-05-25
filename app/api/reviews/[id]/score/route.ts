@@ -45,16 +45,16 @@ export async function POST(
             );
         }
 
-        // Step 2: Ensure PDF is parsed
+        // Step 2: Ensure PDF is parsed and profile is extracted
         let pdfText = review.parsed_pdf_text;
         if (!pdfText) {
-            // Call parse endpoint
-            const parseResponse = await fetch(`${process.env.NEXT_PUBLIC_INSFORGE_URL}/api/reviews/${reviewId}/parse-pdf`);
-            const parseResult = await parseResponse.json();
+            // Call extract-profile endpoint (which also parses PDF)
+            const extractResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/reviews/${reviewId}/extract-profile?userId=${userId || ''}`);
+            const extractResult = await extractResponse.json();
 
-            if (!parseResult.success) {
+            if (!extractResult.success) {
                 return NextResponse.json(
-                    { error: 'Failed to parse PDF' },
+                    { error: 'Failed to extract profile data' },
                     { status: 500 }
                 );
             }

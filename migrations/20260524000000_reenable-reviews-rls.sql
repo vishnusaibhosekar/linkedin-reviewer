@@ -17,7 +17,7 @@ ON reviews
 FOR SELECT
 TO authenticated
 USING (
-  user_id::text = auth.uid()
+  user_id = auth.uid()
 );
 
 -- Policy: Users can INSERT reviews (automatically sets user_id to authenticated user)
@@ -26,7 +26,7 @@ ON reviews
 FOR INSERT
 TO authenticated
 WITH CHECK (
-  user_id::text = auth.uid()
+  user_id = auth.uid()
 );
 
 -- Policy: Users can UPDATE their own reviews
@@ -35,10 +35,10 @@ ON reviews
 FOR UPDATE
 TO authenticated
 USING (
-  user_id::text = auth.uid()
+  user_id = auth.uid()
 )
 WITH CHECK (
-  user_id::text = auth.uid()
+  user_id = auth.uid()
 );
 
 -- Policy: Users can DELETE their own reviews
@@ -47,13 +47,5 @@ ON reviews
 FOR DELETE
 TO authenticated
 USING (
-  user_id::text = auth.uid()
+  user_id = auth.uid()
 );
-
--- Policy: Service role (API key) has full access for webhooks and admin operations
-CREATE POLICY "Admin full access"
-ON reviews
-FOR ALL
-TO service_role
-USING (true)
-WITH CHECK (true);
