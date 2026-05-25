@@ -16,8 +16,12 @@ export default function AuthCallbackPage() {
 
         if (!loading) {
             if (user) {
-                // Auth successful, redirect to dashboard
-                router.push("/dashboard");
+                // Auth successful - check if onboarding is complete
+                if (user.profile?.phone) {
+                    router.push("/dashboard");
+                } else {
+                    router.push("/onboarding");
+                }
             } else if (timeoutReached) {
                 // Timeout reached with no user, redirect back to login
                 router.push("/auth/login");

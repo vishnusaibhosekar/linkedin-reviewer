@@ -10,6 +10,12 @@ interface User {
     avatar_url?: string;
     phone?: string;
     provider?: string;
+    profile?: {
+        name?: string;
+        avatar_url?: string;
+        phone?: string;
+        [key: string]: any;
+    };
 }
 
 interface AuthContextType {
@@ -39,6 +45,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const { data, error } = await insforge.auth.getCurrentUser();
 
             if (cancelled) return;
+
+            console.log('[AuthContext] getCurrentUser data:', data);
+            console.log('[AuthContext] getCurrentUser error:', error);
 
             if (error || !data?.user) {
                 // Token might be expired - try to refresh the session
