@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 function PaymentSuccessContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user, refreshSession } = useAuth();
+    const { user, loading, refreshSession } = useAuth();
     const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
     const [errorMessage, setErrorMessage] = useState('');
 
@@ -19,6 +19,9 @@ function PaymentSuccessContent() {
     const reviewId = searchParams.get('review_id');
 
     useEffect(() => {
+        // Don't run verification until AuthContext has finished loading
+        if (loading) return;
+
         const verifyPayment = async () => {
             if (!reviewId) {
                 setStatus('error');
@@ -27,31 +30,72 @@ function PaymentSuccessContent() {
             }
 
             try {
-                // Refresh session first to ensure we're authenticated after payment redirect
-                const { data: sessionData } = await insforge.auth.getCurrentUser();
-                let userId = user?.id || sessionData?.user?.id;
+                // Wait a moment for webhook to process
+                await new Promise(resolve => setTimeout(resolve, 2000));
 
+                // First, try to get userId from AuthContext
+                let userId = user?.id;
+
+                // If not available, refresh session
                 if (!userId) {
                     const refreshed = await refreshSession();
                     if (refreshed) {
-                        // Get the user ID from the refreshed session
-                        const { data: refreshedData } = await insforge.auth.getCurrentUser();
-                        userId = refreshedData?.user?.id;
+                        userId = user?.id;
                     }
                 }
 
+                // Fallback: directly get current user from InsForge
                 if (!userId) {
+                    const { data: sessionData } = await insforge.auth.getCurrentUser();
+                    userId = sessionData?.user?.id;
+                }
+
+                // If we still don't have userId, try to fetch review without it
+                // The webhook already verified the payment, so we can trust the review exists
+                if (!userId) {
+                    console.log('[Payment Success] No userId found, attempting direct review fetch');
+                    // Try fetching without userId filter first to see if review exists
+                    const response = await fetch(`/api/reviews/${reviewId}`);
+
+                    if (response.ok) {
+                        const result = await response.json();
+
+                        if (result.success && result.review) {
+                            const review = result.review;
+
+                            // If payment is marked as paid by webhook, proceed
+                            if (review.payment_status === 'paid') {
+                                setStatus('success');
+                                toast.success('Payment successful!');
+
+                                // Redirect to processing page after brief delay
+                                setTimeout(() => {
+                                    router.push(`/dashboard/review/${reviewId}/processing`);
+                                }, 2000);
+                                return;
+                            }
+                        }
+                    }
+
+                    // If we reach here, we couldn't verify
                     setStatus('error');
                     setErrorMessage('Authentication required. Please log in again.');
                     return;
                 }
 
-
-                // Wait a moment for webhook to process
-                await new Promise(resolve => setTimeout(resolve, 2000));
-
                 // Check if review exists and has been marked as paid
                 const response = await fetch(`/api/reviews/${reviewId}?userId=${userId}`);
+
+                if (!response.ok) {
+                    if (response.status === 504) {
+                        // Timeout - give user option to retry
+                        setStatus('error');
+                        setErrorMessage('Database request timed out. Please wait a moment and try again, or contact support if the issue persists.');
+                        return;
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
                 const result = await response.json();
 
                 if (result.success && result.review) {
@@ -92,7 +136,7 @@ function PaymentSuccessContent() {
         };
 
         verifyPayment();
-    }, [reviewId, router]);
+    }, [reviewId, user, loading, router]);
 
     const finalizeReviewCreation = async (reviewId: string, pdfData: string, screenshotsData: string, userId: string) => {
         try {

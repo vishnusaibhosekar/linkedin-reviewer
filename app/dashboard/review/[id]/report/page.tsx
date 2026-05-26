@@ -88,7 +88,9 @@ export default function ReportPage() {
         fetchReview();
     }, [reviewId]);
 
-    const getScoreBandColor = (band: string) => {
+    const getScoreBandColor = (band: string | undefined | null) => {
+        if (!band) return 'bg-[#6B778C] text-white';
+
         switch (band.toLowerCase()) {
             case 'excellent': return 'bg-[#00875A] text-white';
             case 'good': return 'bg-[#0052CC] text-white';
@@ -178,14 +180,23 @@ export default function ReportPage() {
             <div className="max-w-6xl mx-auto">
                 {/* Header */}
                 <div className="mb-8">
-                    <Button
-                        variant="ghost"
-                        onClick={() => router.push('/dashboard')}
-                        className="mb-6 text-[#6B778C] hover:text-[#172B4D]"
-                    >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Back to Dashboard
-                    </Button>
+                    <div className="flex items-center justify-between mb-6">
+                        <Button
+                            variant="ghost"
+                            onClick={() => router.push('/dashboard')}
+                            className="text-[#6B778C] hover:text-[#172B4D]"
+                        >
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Back to Dashboard
+                        </Button>
+
+                        <Button
+                            onClick={() => router.push(`/dashboard/review/${reviewId}/rewrite`)}
+                            className="bg-[#0052CC] text-white hover:bg-[#0043A8]"
+                        >
+                            Get Your LinkedIn Rewritten →
+                        </Button>
+                    </div>
 
                     <div className="bg-white rounded-2xl shadow-lg border border-[#DFE1E6] p-8">
                         <div className="flex flex-col md:flex-row items-center gap-8">

@@ -7,10 +7,10 @@ export async function GET(
 ) {
     try {
         const resolvedParams = await params;
-        const rewriteId = resolvedParams.id;
+        const inputId = resolvedParams.id;
 
-        // RLS will filter by user_id automatically (cookie-based auth)
-        const { data, error } = await insforge.database
+        // First try to find by rewrite_orders.id (direct ID)
+        let { data, error } = await insforge.database
             .from('rewrite_orders')
             .select(`
                 *,
@@ -21,8 +21,38 @@ export async function GET(
                     created_at
                 )
             `)
-            .eq('id', rewriteId)  // Query by rewrite order id
+            .eq('id', inputId)
             .single();
+
+        // If not found, try by review_id (for payment verification scenarios)
+        if (error || !data) {
+            console.log('[Rewrites API] Not found by id, trying review_id:', inputId);
+
+            const result = await insforge.database
+                .from('rewrite_orders')
+                .select(`
+                    *,
+                    reviews (
+                        full_name,
+                        overall_score,
+                        score_band,
+                        created_at
+                    )
+                `)
+                .eq('review_id', inputId)
+                .single();
+
+            data = result.data;
+            error = result.error;
+
+            // Only return if payment is confirmed (webhook processed)
+            if (data && data.payment_status !== 'paid') {
+                return NextResponse.json(
+                    { error: 'Payment not confirmed for this rewrite order' },
+                    { status: 401 }
+                );
+            }
+        }
 
         if (error || !data) {
             return NextResponse.json(
