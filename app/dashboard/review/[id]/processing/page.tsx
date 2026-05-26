@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { Loader2, CheckCircle, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
+import { Loader2, CheckCircle, ArrowRight, AlertCircle, RefreshCw, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 
@@ -16,15 +16,19 @@ export default function ProcessingPage() {
     const [errorMessage, setErrorMessage] = useState<string>('');
 
     const steps = [
-        { label: 'Uploading your files', status: 'uploading' },
-        { label: 'Extracting text from LinkedIn PDF', status: 'parsing' },
-        { label: 'Processing profile screenshots', status: 'processing_screenshots' },
-        { label: 'Extracting structured profile data with AI', status: 'extracting' },
-        { label: 'Analyzing profile optimization', status: 'analyzing' },
-        { label: 'Scoring across 9 categories', status: 'scoring' },
-        { label: 'Generating personalized recommendations', status: 'recommendations' },
-        { label: 'Finalizing your review report', status: 'finalizing' },
+        { label: 'Uploading your LinkedIn data', status: 'uploading', icon: '📤' },
+        { label: 'Reading your profile', status: 'parsing', icon: '📄' },
+        { label: 'Analyzing your profile screenshots', status: 'processing_screenshots', icon: '' },
+        { label: 'Understanding your experience with AI', status: 'extracting', icon: '🤖' },
+        { label: 'Finding optimization opportunities', status: 'analyzing', icon: '🔍' },
+        { label: 'Scoring your profile across 9 areas', status: 'scoring', icon: '⭐' },
+        { label: 'Creating personalized recommendations', status: 'recommendations', icon: '💡' },
+        { label: 'Preparing your final report', status: 'finalizing', icon: '✨' },
     ];
+
+    const getCurrentStepIndex = () => {
+        return steps.findIndex(step => step.status === status);
+    };
 
     const startProcessing = useCallback(async () => {
         setStatus('parsing');
@@ -134,18 +138,23 @@ export default function ProcessingPage() {
         router.push('/dashboard');
     };
 
+    const currentStepIndex = getCurrentStepIndex();
+
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-50 flex items-center justify-center px-4">
             <div className="max-w-2xl w-full">
                 {/* Header */}
                 <div className="text-center mb-12">
-                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#0052CC] mb-6">
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#0052CC] mb-6 relative">
                         {status === 'complete' ? (
                             <CheckCircle className="w-10 h-10 text-white" />
                         ) : status === 'error' ? (
                             <AlertCircle className="w-10 h-10 text-white" />
                         ) : (
-                            <Loader2 className="w-10 h-10 text-white animate-spin" />
+                            <>
+                                <Loader2 className="w-10 h-10 text-white animate-spin" />
+                                <div className="absolute inset-0 rounded-full bg-[#0052CC] animate-ping opacity-20" />
+                            </>
                         )}
                     </div>
                     <h1 className="text-3xl font-semibold text-[#172B4D] mb-3">
@@ -164,50 +173,64 @@ export default function ProcessingPage() {
                     </p>
                 </div>
 
-                {/* Progress Bar */}
+                {/* Progress Section */}
                 {status !== 'error' && (
                     <div className="bg-white rounded-2xl shadow-sm border border-[#DFE1E6] p-8 mb-6">
-                        <div className="mb-6">
-                            <div className="flex justify-between items-center mb-2">
+                        {/* Progress Bar */}
+                        <div className="mb-8">
+                            <div className="flex justify-between items-center mb-3">
                                 <span className="text-sm font-medium text-[#172B4D]">Progress</span>
                                 <span className="text-sm font-semibold text-[#0052CC]">{Math.min(progress, 100)}%</span>
                             </div>
                             <div className="w-full bg-[#F4F5F7] rounded-full h-3 overflow-hidden">
                                 <div
-                                    className="bg-gradient-to-r from-[#0052CC] to-[#0747A6] h-full rounded-full transition-all duration-500 ease-out"
+                                    className="bg-gradient-to-r from-[#0052CC] to-[#0747A6] h-full rounded-full transition-all duration-700 ease-out relative"
                                     style={{ width: `${Math.min(progress, 100)}%` }}
-                                />
+                                >
+                                    {progress < 100 && (
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-pulse" />
+                                    )}
+                                </div>
                             </div>
                         </div>
 
-                        {/* Steps */}
-                        <div className="space-y-4">
-                            {steps.map((step, index) => {
-                                const stepProgress = (index + 1) * 25;
-                                const isComplete = progress >= stepProgress;
-                                const isActive = status === step.status;
-
-                                return (
-                                    <div key={step.status} className="flex items-center gap-3">
-                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${isComplete ? 'bg-[#0052CC]' : isActive ? 'bg-[#DFE1E6] animate-pulse' : 'bg-[#F4F5F7]'}`}>
-                                            {isComplete ? (
-                                                <CheckCircle className="w-4 h-4 text-white" />
-                                            ) : (
-                                                <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-[#0052CC]' : 'bg-[#C1C7D0]'}`} />
-                                            )}
-                                        </div>
-                                        <span className={`text-sm ${isComplete ? 'text-[#172B4D] font-medium' : isActive ? 'text-[#172B4D]' : 'text-[#6B778C]'}`}>
-                                            {step.label}
-                                        </span>
+                        {/* Active Step Display */}
+                        {status !== 'complete' && currentStepIndex >= 0 && (
+                            <div className="space-y-6">
+                                {/* Current Step - Large & Animated */}
+                                <div className="text-center py-6">
+                                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4 animate-pulse">
+                                        <span className="text-3xl">{steps[currentStepIndex].icon}</span>
                                     </div>
-                                );
-                            })}
-                        </div>
+                                    <h3 className="text-xl font-semibold text-[#172B4D] mb-2">
+                                        {steps[currentStepIndex].label}
+                                    </h3>
+                                    <div className="flex items-center justify-center gap-2 text-[#6B778C]">
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        <span className="text-sm">Processing...</span>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Completion Message */}
+                        {status === 'complete' && (
+                            <div className="text-center py-6">
+                                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
+                                    <Sparkles className="w-8 h-8 text-green-600" />
+                                </div>
+                                <p className="text-[#172B4D] font-medium">
+                                    AI Review ready!
+                                </p>
+                            </div>
+                        )}
 
                         {status !== 'complete' && (
                             <div className="mt-6 bg-blue-50 border border-blue-200 rounded-xl p-4">
                                 <p className="text-sm text-[#0747A6]">
-                                    <strong>Note:</strong> This may take 30-60 seconds depending on profile complexity. Please don't close this page.
+                                    <strong>Note:</strong>
+                                    <br />
+                                    This may take 30-60 seconds depending on profile complexity. Please don't close this page.
                                 </p>
                             </div>
                         )}

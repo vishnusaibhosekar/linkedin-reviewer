@@ -49,9 +49,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             if (cancelled) return;
 
-            console.log('[AuthContext] getCurrentUser data:', data);
-            console.log('[AuthContext] getCurrentUser error:', error);
-
             if (error || !data?.user) {
                 // Token might be expired - try to refresh the session
                 try {

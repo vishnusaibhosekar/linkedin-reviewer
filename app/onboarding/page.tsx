@@ -172,8 +172,6 @@ export default function OnboardingPage() {
             // OTP verified successfully - save phone to InsForge profile
             const fullPhoneNumber = `${selectedCountry}${phoneNumber.replace(/\s/g, '')}`;
 
-            console.log('[Onboarding] Saving phone to profile:', fullPhoneNumber);
-
             const { data, error } = await insforge.auth.setProfile({
                 phone: fullPhoneNumber,
             });
@@ -183,16 +181,12 @@ export default function OnboardingPage() {
                 throw error;
             }
 
-            console.log('[Onboarding] setProfile success:', data);
 
             // Refresh AuthContext session to ensure it has the latest phone number
-            console.log('[Onboarding] Refreshing session...');
             const refreshed = await refreshSession();
-            console.log('[Onboarding] Session refreshed:', refreshed);
 
             // Log the updated user object to see the structure
             const { data: userData } = await insforge.auth.getCurrentUser();
-            console.log('[Onboarding] User after refresh:', userData?.user);
 
             toast.success("Phone verified successfully!");
 

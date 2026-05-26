@@ -112,7 +112,7 @@ export default function NewReviewPage() {
         const newErrors: { [key: string]: string } = {};
 
         if (!formData.linkedinUrl.trim()) {
-            newErrors.linkedinUrl = 'LinkedIn profile URL is required';
+            newErrors.linkedinUrl = 'LinkedIn profile name is required';
         }
         if (!formData.pdfFile) {
             newErrors.pdfFile = 'LinkedIn PDF export is required';
@@ -293,7 +293,7 @@ export default function NewReviewPage() {
                 workExperience: formData.workExperience,
                 currentJobTitle: formData.currentJobTitle,
                 purpose: formData.purpose,
-                linkedinUrl: formData.linkedinUrl,
+                linkedinUrl: `https://www.linkedin.com/in/${formData.linkedinUrl}`,
                 pdfPath,
             }));
 
@@ -312,7 +312,7 @@ export default function NewReviewPage() {
                     workExperience: formData.workExperience,
                     currentJobTitle: formData.currentJobTitle,
                     purpose: formData.purpose,
-                    linkedinUrl: formData.linkedinUrl,
+                    linkedinUrl: `https://www.linkedin.com/in/${formData.linkedinUrl}`,
                     pdfPath,
                     screenshotPaths,
                     paymentStatus: 'pending',
@@ -561,16 +561,21 @@ export default function NewReviewPage() {
                                 <label className="block text-sm font-medium text-[#172B4D] mb-2">
                                     LinkedIn Profile URL <span className="text-red-500">*</span>
                                 </label>
-                                <Input
-                                    value={formData.linkedinUrl}
-                                    onChange={(e) => {
-                                        setFormData({ ...formData, linkedinUrl: e.target.value });
-                                        if (errors.linkedinUrl) setErrors({ ...errors, linkedinUrl: '' });
-                                    }}
-                                    placeholder="https://linkedin.com/in/yourprofile"
-                                    type="url"
-                                    className={`h-11 ${errors.linkedinUrl ? 'border-red-500 focus:ring-red-500' : ''}`}
-                                />
+                                <div className="flex items-center">
+                                    <span className="inline-flex items-center px-3 h-11 text-sm text-gray-500 bg-gray-100 border border-r-0 border-[#DFE1E6] rounded-l-md">
+                                        https://www.linkedin.com/in/
+                                    </span>
+                                    <Input
+                                        value={formData.linkedinUrl}
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, linkedinUrl: e.target.value });
+                                            if (errors.linkedinUrl) setErrors({ ...errors, linkedinUrl: '' });
+                                        }}
+                                        placeholder="yourprofile"
+                                        type="text"
+                                        className={`h-11 rounded-l-none ${errors.linkedinUrl ? 'border-red-500 focus:ring-red-500' : ''}`}
+                                    />
+                                </div>
                                 {errors.linkedinUrl && (
                                     <p className="text-xs text-red-600 mt-1">{errors.linkedinUrl}</p>
                                 )}
@@ -759,7 +764,7 @@ export default function NewReviewPage() {
                                 <div className="space-y-2 text-sm">
                                     <div>
                                         <span className="text-[#6B778C]">URL:</span>
-                                        <p className="font-medium text-[#172B4D] break-all">{formData.linkedinUrl}</p>
+                                        <p className="font-medium text-[#172B4D] break-all">{`https://www.linkedin.com/in/${formData.linkedinUrl}`}</p>
                                     </div>
                                     <div>
                                         <span className="text-[#6B778C]">PDF:</span>

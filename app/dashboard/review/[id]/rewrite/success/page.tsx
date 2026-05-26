@@ -11,7 +11,7 @@ export default function RewriteSuccessPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const params = useParams();
-    const { user } = useAuth();
+    const { user, loading, refreshSession } = useAuth();
     const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
     const [errorMessage, setErrorMessage] = useState('');
 
@@ -19,6 +19,9 @@ export default function RewriteSuccessPage() {
     const sessionId = searchParams.get('session_id');
 
     useEffect(() => {
+        // Don't run verification until AuthContext has finished loading
+        if (loading) return;
+
         const verifyPayment = async () => {
             if (!reviewId) {
                 setStatus('error');
@@ -34,6 +37,37 @@ export default function RewriteSuccessPage() {
                 const response = await fetch(`/api/rewrites/${reviewId}`, {
                     credentials: 'include'
                 });
+                
+                if (!response.ok) {
+                    // Try once more if first attempt fails
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    const retryResponse = await fetch(`/api/rewrites/${reviewId}`, {
+                        credentials: 'include'
+                    });
+                    
+                    if (!retryResponse.ok) {
+                        throw new Error(`HTTP error! status: ${retryResponse.status}`);
+                    }
+                    
+                    const retryResult = await retryResponse.json();
+                    if (retryResult.success && retryResult.rewriteOrder) {
+                        const rewriteOrder = retryResult.rewriteOrder;
+                        
+                        if (rewriteOrder.payment_status === 'paid') {
+                            setStatus('success');
+                            toast.success('Payment successful!');
+                            setTimeout(() => {
+                                router.push('/dashboard');
+                            }, 2000);
+                            return;
+                        }
+                    }
+                    
+                    setStatus('error');
+                    setErrorMessage('Rewrite order not found');
+                    return;
+                }
+                
                 const result = await response.json();
 
                 if (result.success && result.rewriteOrder) {
@@ -63,7 +97,7 @@ export default function RewriteSuccessPage() {
         };
 
         verifyPayment();
-    }, [reviewId, router]);
+    }, [reviewId, loading, router]);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center p-4">
