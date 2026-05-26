@@ -386,15 +386,25 @@ export default function AdminRewritesPage() {
                     throw new Error(extractResult.error || 'Failed to extract profile data');
                 }
 
-                // Refetch the review to get the newly extracted data
-                const reviewResponse = await fetch(`/api/reviews/${selectedReview?.id}?userId=${selectedOrder?.user_id}`);
-                const reviewResult = await reviewResponse.json();
 
-                if (reviewResponse.ok && reviewResult.success) {
-                    setSelectedReview(reviewResult.review);
+                // Check if structured data was extracted
+                if (extractResult.structuredDataExtracted && extractResult.parsed_profile_data) {
+                    // Update selectedReview with the newly extracted data
+                    setSelectedReview(prev => prev ? {
+                        ...prev,
+                        parsed_profile_data: extractResult.parsed_profile_data
+                    } : null);
+                    toast.success('Profile data extracted! Opening preview...');
+                } else {
+                    console.warn('Structured data extraction failed or returned empty');
+                    toast.warning('Profile text extracted, but structured data extraction failed. Opening with basic info...');
+                    // Still try to refetch in case partial data was saved
+                    const reviewResponse = await fetch(`/api/reviews/${selectedReview?.id}?userId=${selectedOrder?.user_id}`);
+                    const reviewResult = await reviewResponse.json();
+                    if (reviewResponse.ok && reviewResult.success) {
+                        setSelectedReview(reviewResult.review);
+                    }
                 }
-
-                toast.success('Profile data extracted! Opening preview...');
             } catch (error: any) {
                 console.error('Extract profile error:', error);
                 toast.error(error.message || 'Failed to extract profile data');
@@ -1094,9 +1104,8 @@ export default function AdminRewritesPage() {
 
                         {/* Modal Content */}
                         <div className="flex-1 overflow-hidden">
-                            <LinkedInProfilePreview
-                                ref={previewRef}
-                                initialData={{
+                            {(() => {
+                                const initialData = {
                                     name: selectedReview?.parsed_profile_data?.name || selectedReview?.full_name || '',
                                     headline: selectedReview?.parsed_profile_data?.headline || '',
                                     about: selectedReview?.parsed_profile_data?.about || '',
@@ -1120,11 +1129,17 @@ export default function AdminRewritesPage() {
                                         date: ach.date || '',
                                     })) || [],
                                     recommendations: selectedReview?.parsed_profile_data?.recommendations || [],
-                                }}
-                                onSave={handleSaveProfile}
-                                isSaving={savingProfile}
-                                hideSaveButton={true}
-                            />
+                                };
+                                return (
+                                    <LinkedInProfilePreview
+                                        ref={previewRef}
+                                        initialData={initialData}
+                                        onSave={handleSaveProfile}
+                                        isSaving={savingProfile}
+                                        hideSaveButton={true}
+                                    />
+                                );
+                            })()}
                         </div>
                     </div>
                 </div>

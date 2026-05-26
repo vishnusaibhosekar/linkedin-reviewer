@@ -38,96 +38,110 @@ export async function GET(
             );
         }
 
-        // Check if already parsed
-        if (review.parsed_pdf_text) {
+        // Check if structured profile data already exists
+        if (review.parsed_profile_data) {
             return NextResponse.json({
                 success: true,
-                textLength: review.parsed_pdf_text.length,
-                preview: review.parsed_pdf_text.substring(0, 200),
+                textLength: review.parsed_pdf_text?.length || 0,
+                preview: review.parsed_pdf_text?.substring(0, 200) || '',
+                structuredDataExtracted: true,
+                parsed_profile_data: review.parsed_profile_data,
             });
         }
 
-        // Download PDF from storage
-        const { data: pdfData, error: downloadError } = await insforge.storage
-            .from('linkedin-pdfs')
-            .download(review.pdf_storage_path);
+        // If parsed_pdf_text doesn't exist, extract it from PDF
+        let extractedText = review.parsed_pdf_text;
+        if (!extractedText) {
+            console.log('PDF text not found, extracting from PDF...');
 
-        if (downloadError || !pdfData) {
-            return NextResponse.json(
-                { error: 'PDF file not found in storage' },
-                { status: 404 }
-            );
-        }
+            // Download PDF from storage
+            const { data: pdfData, error: downloadError } = await insforge.storage
+                .from('linkedin-pdfs')
+                .download(review.pdf_storage_path);
 
-        // Extract text from PDF
-        const pdfBuffer = await pdfData.arrayBuffer();
+            if (downloadError || !pdfData) {
+                return NextResponse.json(
+                    { error: 'PDF file not found in storage' },
+                    { status: 404 }
+                );
+            }
 
-        // Save to temp file for pdf2json (use OS temp directory for Vercel compatibility)
-        const tempDir = os.tmpdir();
-        const tempPdfPath = path.join(tempDir, `${reviewId}.pdf`);
-        fs.writeFileSync(tempPdfPath, Buffer.from(pdfBuffer));
+            // Extract text from PDF
+            const pdfBuffer = await pdfData.arrayBuffer();
 
-        // Parse PDF using pdf2json
-        const extractedText = await new Promise<string>((resolve, reject) => {
-            const pdfParser = new PDFParser();
+            // Save to temp file for pdf2json (use OS temp directory for Vercel compatibility)
+            const tempDir = os.tmpdir();
+            const tempPdfPath = path.join(tempDir, `${reviewId}.pdf`);
+            fs.writeFileSync(tempPdfPath, Buffer.from(pdfBuffer));
 
-            pdfParser.on('pdfParser_dataError', (errData) => {
-                const errorMsg = errData instanceof Error ? errData.message : (errData as any).parserError?.message || 'PDF parsing failed';
-                reject(new Error(errorMsg));
+            // Parse PDF using pdf2json
+            extractedText = await new Promise<string>((resolve, reject) => {
+                const pdfParser = new PDFParser();
+
+                pdfParser.on('pdfParser_dataError', (errData) => {
+                    const errorMsg = errData instanceof Error ? errData.message : (errData as any).parserError?.message || 'PDF parsing failed';
+                    reject(new Error(errorMsg));
+                });
+
+                pdfParser.on('pdfParser_dataReady', (pdfData) => {
+                    // Clean up temp file
+                    try {
+                        fs.unlinkSync(tempPdfPath);
+                    } catch (e) {
+                        // Ignore cleanup errors
+                    }
+
+                    // Extract text from all pages
+                    let text = '';
+                    if (pdfData && pdfData.Pages) {
+                        text = pdfData.Pages.map((page: any) =>
+                            page.Texts.map((textItem: any) =>
+                                decodeURIComponent(textItem.R.map((r: any) => r.T).join(' '))
+                            ).join(' ')
+                        ).join('\n');
+                    }
+                    resolve(text);
+                });
+
+                pdfParser.loadPDF(tempPdfPath);
             });
 
-            pdfParser.on('pdfParser_dataReady', (pdfData) => {
-                // Clean up temp file
-                try {
-                    fs.unlinkSync(tempPdfPath);
-                } catch (e) {
-                    // Ignore cleanup errors
-                }
+            if (!extractedText || extractedText.trim().length === 0) {
+                return NextResponse.json(
+                    { error: 'Failed to extract text from PDF' },
+                    { status: 500 }
+                );
+            }
 
-                // Extract text from all pages
-                let text = '';
-                if (pdfData && pdfData.Pages) {
-                    text = pdfData.Pages.map((page: any) =>
-                        page.Texts.map((textItem: any) =>
-                            decodeURIComponent(textItem.R.map((r: any) => r.T).join(' '))
-                        ).join(' ')
-                    ).join('\n');
-                }
-                resolve(text);
-            });
+            // Save extracted text to database
+            const { error: updateError } = await insforge.database
+                .from('reviews')
+                .update({
+                    parsed_pdf_text: extractedText,
+                })
+                .eq('id', reviewId);
 
-            pdfParser.loadPDF(tempPdfPath);
-        });
+            if (updateError) {
+                console.error('Failed to save parsed PDF text:', updateError);
+                return NextResponse.json(
+                    { error: 'Failed to save parsed text' },
+                    { status: 500 }
+                );
+            }
 
-        if (!extractedText || extractedText.trim().length === 0) {
-            return NextResponse.json(
-                { error: 'Failed to extract text from PDF' },
-                { status: 500 }
-            );
-        }
-
-        // Save extracted text to database
-        const { error: updateError } = await insforge.database
-            .from('reviews')
-            .update({
-                parsed_pdf_text: extractedText,
-            })
-            .eq('id', reviewId);
-
-        if (updateError) {
-            console.error('Failed to save parsed PDF text:', updateError);
-            return NextResponse.json(
-                { error: 'Failed to save parsed text' },
-                { status: 500 }
-            );
+            console.log('Successfully extracted and saved PDF text');
         }
 
         // Extract structured profile data using AI (from PDF text + screenshots)
         let structuredProfileData = null;
         try {
+            console.log('Starting AI profile extraction for review:', reviewId);
+            console.log('Has screenshots:', review.screenshot_paths?.length || 0);
+
             // Download screenshots if available
             let screenshotBase64: string[] = [];
             if (review.screenshot_paths && review.screenshot_paths.length > 0) {
+                console.log('Downloading', review.screenshot_paths.length, 'screenshots...');
                 screenshotBase64 = await Promise.all(
                     (review.screenshot_paths as string[]).map(async (storagePath: string) => {
                         try {
@@ -136,6 +150,7 @@ export async function GET(
                                 .download(storagePath);
 
                             if (dlError || !data) {
+                                console.warn('Failed to download screenshot:', storagePath, dlError);
                                 return null;
                             }
 
@@ -150,6 +165,9 @@ export async function GET(
                         }
                     })
                 ).then(results => results.filter(Boolean) as string[]);
+                console.log('Successfully converted', screenshotBase64.length, 'screenshots to base64');
+            } else {
+                console.warn('No screenshots available for this review');
             }
 
             const systemPrompt = `You are an expert data extraction specialist. Extract structured profile information from a LinkedIn profile.
@@ -221,6 +239,7 @@ Return ONLY valid JSON matching this exact schema:
                 }
             ];
 
+            console.log('Calling OpenRouter API with model:', SCORING_MODEL);
             const completion = await openrouter.chat.completions.create({
                 model: SCORING_MODEL,
                 messages: messages,
@@ -229,28 +248,53 @@ Return ONLY valid JSON matching this exact schema:
                 temperature: 0.1,
             });
 
+            console.log('OpenRouter API response received');
             const responseContent = completion.choices[0]?.message?.content;
-            if (responseContent) {
-                structuredProfileData = JSON.parse(responseContent);
 
-                // Save structured data to database
-                await insforge.database
-                    .from('reviews')
-                    .update({
-                        parsed_profile_data: structuredProfileData,
-                    })
-                    .eq('id', reviewId);
+            if (!responseContent) {
+                console.error('OpenRouter returned empty response');
+                throw new Error('AI returned empty response');
             }
+
+            console.log('AI response length:', responseContent.length);
+            console.log('AI response preview:', responseContent.substring(0, 200));
+
+            structuredProfileData = JSON.parse(responseContent);
+            console.log('Successfully parsed AI response as JSON');
+
+            // Save structured data to database
+            const { error: updateError } = await insforge.database
+                .from('reviews')
+                .update({
+                    parsed_profile_data: structuredProfileData,
+                })
+                .eq('id', reviewId);
+
+            if (updateError) {
+                console.error('Failed to save parsed_profile_data to database:', updateError);
+                throw new Error(`Database update failed: ${updateError.message}`);
+            }
+
+            console.log('Successfully saved parsed_profile_data to database');
         } catch (aiError) {
             console.error('Failed to extract structured profile data:', aiError);
+            console.error('AI Error details:', aiError instanceof Error ? aiError.stack : JSON.stringify(aiError));
             // Don't fail the whole parsing if AI extraction fails
         }
+
+        // Refetch the review to get the newly saved parsed_profile_data
+        const { data: updatedReview } = await insforge.database
+            .from('reviews')
+            .select('parsed_profile_data')
+            .eq('id', reviewId)
+            .single();
 
         return NextResponse.json({
             success: true,
             textLength: extractedText.length,
             preview: extractedText.substring(0, 200),
             structuredDataExtracted: !!structuredProfileData,
+            parsed_profile_data: updatedReview?.parsed_profile_data || null,
         });
 
     } catch (error) {
