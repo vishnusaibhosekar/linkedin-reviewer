@@ -8,7 +8,6 @@ const insforge = createClient({
 
 export async function GET(request: NextRequest) {
     try {
-        console.log('[Admin Users API] Fetching reviews...');
 
         // Fetch all reviews with user data
         const { data: reviews, error: reviewsError } = await insforge.database
@@ -23,7 +22,6 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        console.log(`[Admin Users API] Found ${reviews?.length || 0} reviews`);
 
         // Aggregate user data from reviews
         const userMap = new Map<string, any>();
@@ -80,34 +78,23 @@ export async function GET(request: NextRequest) {
             }
         });
 
-        console.log(`[Admin Users API] Aggregated ${userMap.size} unique users`);
 
         // Try to fetch user profiles from auth system
         const userIds = Array.from(userMap.keys());
 
         // Fetch email from auth.users table using RPC function (bypasses schema restrictions)
         try {
-            console.log('[Admin Users API] Querying user emails via RPC, userIds:', userIds);
 
             const { data: authUsers, error: authError } = await insforge.database
                 .rpc('get_user_emails', { user_ids: userIds });
 
-            console.log('[Admin Users API] RPC query result:', {
-                authUsersCount: authUsers?.length,
-                authUsers: JSON.stringify(authUsers, null, 2),
-                authError
-            });
-
             if (authError) {
                 console.error('[Admin Users API] Error fetching emails via RPC:', authError);
             } else if (authUsers && authUsers.length > 0) {
-                console.log(`[Admin Users API] Fetched ${authUsers.length} user emails`);
                 authUsers.forEach((authUser: any) => {
-                    console.log(`[Admin Users API] Mapping email for ${authUser.id}: ${authUser.email}`);
                     const userData = userMap.get(authUser.id);
                     if (userData) {
                         userData.email = authUser.email || null;
-                        console.log(`[Admin Users API] Set email for ${authUser.id} to: ${userData.email}`);
                     }
                 });
             } else {
@@ -128,7 +115,6 @@ export async function GET(request: NextRequest) {
                 }
 
                 if (profile) {
-                    console.log(`[Admin Users API] Profile for ${userId}:`, JSON.stringify(profile, null, 2));
 
                     const userData = userMap.get(userId);
 
@@ -150,7 +136,6 @@ export async function GET(request: NextRequest) {
             new Date(b.last_active).getTime() - new Date(a.last_active).getTime()
         );
 
-        console.log(`[Admin Users API] Returning ${users.length} users`);
         return NextResponse.json({ users });
     } catch (error) {
         console.error('[Admin Users API] Error:', error);

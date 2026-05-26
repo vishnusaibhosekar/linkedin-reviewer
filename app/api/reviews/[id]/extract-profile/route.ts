@@ -52,7 +52,6 @@ export async function GET(
         // If parsed_pdf_text doesn't exist, extract it from PDF
         let extractedText = review.parsed_pdf_text;
         if (!extractedText) {
-            console.log('PDF text not found, extracting from PDF...');
 
             // Download PDF from storage
             const { data: pdfData, error: downloadError } = await insforge.storage
@@ -129,19 +128,15 @@ export async function GET(
                 );
             }
 
-            console.log('Successfully extracted and saved PDF text');
         }
 
         // Extract structured profile data using AI (from PDF text + screenshots)
         let structuredProfileData = null;
         try {
-            console.log('Starting AI profile extraction for review:', reviewId);
-            console.log('Has screenshots:', review.screenshot_paths?.length || 0);
 
             // Download screenshots if available
             let screenshotBase64: string[] = [];
             if (review.screenshot_paths && review.screenshot_paths.length > 0) {
-                console.log('Downloading', review.screenshot_paths.length, 'screenshots...');
                 screenshotBase64 = await Promise.all(
                     (review.screenshot_paths as string[]).map(async (storagePath: string) => {
                         try {
@@ -165,7 +160,6 @@ export async function GET(
                         }
                     })
                 ).then(results => results.filter(Boolean) as string[]);
-                console.log('Successfully converted', screenshotBase64.length, 'screenshots to base64');
             } else {
                 console.warn('No screenshots available for this review');
             }
@@ -239,7 +233,6 @@ Return ONLY valid JSON matching this exact schema:
                 }
             ];
 
-            console.log('Calling OpenRouter API with model:', SCORING_MODEL);
             const completion = await openrouter.chat.completions.create({
                 model: SCORING_MODEL,
                 messages: messages,
@@ -248,7 +241,6 @@ Return ONLY valid JSON matching this exact schema:
                 temperature: 0.1,
             });
 
-            console.log('OpenRouter API response received');
             const responseContent = completion.choices[0]?.message?.content;
 
             if (!responseContent) {
@@ -256,11 +248,8 @@ Return ONLY valid JSON matching this exact schema:
                 throw new Error('AI returned empty response');
             }
 
-            console.log('AI response length:', responseContent.length);
-            console.log('AI response preview:', responseContent.substring(0, 200));
 
             structuredProfileData = JSON.parse(responseContent);
-            console.log('Successfully parsed AI response as JSON');
 
             // Save structured data to database
             const { error: updateError } = await insforge.database
@@ -275,7 +264,6 @@ Return ONLY valid JSON matching this exact schema:
                 throw new Error(`Database update failed: ${updateError.message}`);
             }
 
-            console.log('Successfully saved parsed_profile_data to database');
         } catch (aiError) {
             console.error('Failed to extract structured profile data:', aiError);
             console.error('AI Error details:', aiError instanceof Error ? aiError.stack : JSON.stringify(aiError));
