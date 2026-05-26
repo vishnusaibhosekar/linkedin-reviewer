@@ -23,7 +23,8 @@ import {
     ChevronDown,
     ChevronUp,
     PenTool,
-    Save
+    Save,
+    Users
 } from 'lucide-react';
 import LinkedInProfilePreview, { LinkedInProfilePreviewRef } from '@/app/components/LinkedInProfilePreview';
 
@@ -463,14 +464,25 @@ export default function AdminRewritesPage() {
                             </div>
                         </div>
 
-                        {/* Logout Button */}
-                        <button
-                            onClick={handleLogout}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-all shadow-sm"
-                        >
-                            <LogOut className="w-4 h-4" />
-                            <span className="hidden sm:inline">Logout</span>
-                        </button>
+                        <div className="flex items-center gap-2">
+                            {/* Users Dashboard Link */}
+                            <button
+                                onClick={() => router.push('/admin/users')}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-all shadow-sm"
+                            >
+                                <Users className="w-4 h-4" />
+                                <span className="hidden sm:inline">Users</span>
+                            </button>
+
+                            {/* Logout Button */}
+                            <button
+                                onClick={handleLogout}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-all shadow-sm"
+                            >
+                                <LogOut className="w-4 h-4" />
+                                <span className="hidden sm:inline">Logout</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 

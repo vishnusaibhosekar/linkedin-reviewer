@@ -1,0 +1,111 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@insforge/sdk';
+
+const insforge = createClient({
+    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
+    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
+});
+
+export async function GET(request: NextRequest) {
+    try {
+        // Fetch all reviews with user data
+        const { data: reviews, error: reviewsError } = await insforge.database
+            .from('reviews')
+            .select('*');
+
+        if (reviewsError) {
+            console.error('Error fetching reviews:', reviewsError);
+            return NextResponse.json(
+                { error: 'Failed to fetch reviews' },
+                { status: 500 }
+            );
+        }
+
+        // Aggregate user data from reviews
+        const userMap = new Map<string, any>();
+
+        reviews?.forEach((review: any) => {
+            const userId = review.user_id;
+
+            if (!userMap.has(userId)) {
+                userMap.set(userId, {
+                    user_id: userId,
+                    name: review.full_name,
+                    email: null, // Will need to fetch from auth.users
+                    phone: null, // Will need to fetch from auth.users
+                    total_reviews: 0,
+                    total_spent: 0,
+                    last_active: review.created_at,
+                    review_statuses: [],
+                    linkedin_urls: [],
+                    purposes: [],
+                    job_titles: [],
+                    professional_statuses: [],
+                    overall_scores: [],
+                });
+            }
+
+            const userData = userMap.get(userId);
+            userData.total_reviews += 1;
+            userData.review_statuses.push(review.status);
+            userData.linkedin_urls.push(review.linkedin_url);
+            userData.purposes.push(review.purpose);
+            userData.professional_statuses.push(review.professional_status);
+
+            if (review.current_job_title) {
+                userData.job_titles.push(review.current_job_title);
+            }
+
+            if (review.overall_score) {
+                userData.overall_scores.push(review.overall_score);
+            }
+
+            // Calculate total spent based on payment status
+            if (review.payment_status === 'completed') {
+                userData.total_spent += 49; // Base review price
+            }
+
+            // Track rewrite orders
+            if (review.rewrite_payment_status === 'completed') {
+                userData.total_spent += 29; // Rewrite price
+            }
+
+            // Update last active date
+            if (new Date(review.created_at) > new Date(userData.last_active)) {
+                userData.last_active = review.created_at;
+            }
+        });
+
+        // Try to fetch user profiles from auth system
+        const userIds = Array.from(userMap.keys());
+
+        // Fetch profiles for each user (if available)
+        for (const userId of userIds) {
+            try {
+                const { data: profile } = await insforge.auth.getProfile(userId);
+                if (profile?.profile) {
+                    const userData = userMap.get(userId);
+                    const profileData = profile.profile as any;
+                    userData.email = profileData.email || null;
+                    userData.phone = profileData.phone || null;
+                    userData.name = profileData.name || userData.name;
+                }
+            } catch (err) {
+                // Profile might not exist, continue with review data
+                console.warn(`Could not fetch profile for user ${userId}`);
+            }
+        }
+
+        const users = Array.from(userMap.values()).sort((a, b) =>
+            new Date(b.last_active).getTime() - new Date(a.last_active).getTime()
+        );
+
+        return NextResponse.json({ users });
+    } catch (error) {
+        console.error('Error in admin users API:', error);
+        return NextResponse.json(
+            { error: 'Internal server error' },
+            { status: 500 }
+        );
+    }
+}
