@@ -53,7 +53,6 @@ function PaymentSuccessContent() {
                 // If we still don't have userId, try to fetch review without it
                 // The webhook already verified the payment, so we can trust the review exists
                 if (!userId) {
-                    console.log('[Payment Success] No userId found, attempting direct review fetch');
                     // Try fetching without userId filter first to see if review exists
                     const response = await fetch(`/api/reviews/${reviewId}`);
 

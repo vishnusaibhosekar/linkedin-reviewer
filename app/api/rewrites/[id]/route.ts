@@ -26,7 +26,6 @@ export async function GET(
 
         // If not found, try by review_id (for payment verification scenarios)
         if (error || !data) {
-            console.log('[Rewrites API] Not found by id, trying review_id:', inputId);
 
             const result = await insforge.database
                 .from('rewrite_orders')
