@@ -16,6 +16,7 @@ export default function AuthCallbackPage() {
 
         if (!loading) {
             if (user) {
+
                 // Auth successful - check if onboarding is complete
                 if (user.profile?.phone) {
                     router.push("/dashboard");
@@ -24,14 +25,18 @@ export default function AuthCallbackPage() {
                 }
             } else if (timeoutReached) {
                 // Timeout reached with no user, redirect back to login
+                console.error('[Callback] Timeout reached, redirecting to login');
                 router.push("/auth/login");
             }
         }
 
-        // Set timeout after 5 seconds if still loading
+        // Set timeout after 8 seconds (increased from 5s to allow for slower networks)
         const timer = setTimeout(() => {
-            setTimeoutReached(true);
-        }, 5000);
+            if (!user && loading) {
+                console.warn('[Callback] Setting timeout flag');
+                setTimeoutReached(true);
+            }
+        }, 8000);
 
         return () => clearTimeout(timer);
     }, [user, loading, router, timeoutReached]);

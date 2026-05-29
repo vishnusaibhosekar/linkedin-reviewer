@@ -58,8 +58,12 @@ export default function RewriteIntakePage() {
     // Fetch review data on mount
     useEffect(() => {
         async function fetchReview() {
+            if (!user?.id) {
+                return;
+            }
+
             try {
-                const response = await fetch(`/api/reviews/${reviewId}?userId=${user?.id}`, {
+                const response = await fetch(`/api/reviews/${reviewId}?userId=${user.id}`, {
                     credentials: 'include'
                 });
                 const result = await response.json();
@@ -78,13 +82,14 @@ export default function RewriteIntakePage() {
                     }));
                 }
             } catch (err: any) {
+                console.error('[Rewrite] Error fetching review:', err);
                 toast.error(err.message);
                 router.push('/dashboard');
             }
         }
 
         fetchReview();
-    }, [reviewId, router]);
+    }, [reviewId, user, router]);
 
     const handleNext = () => {
         if (step === 1 && !validateStep1()) return;

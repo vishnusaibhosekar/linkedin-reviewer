@@ -67,8 +67,12 @@ export default function ReportPage() {
 
     useEffect(() => {
         async function fetchReview() {
+            if (!user?.id) {
+                return;
+            }
+
             try {
-                const response = await fetch(`/api/reviews/${reviewId}?userId=${user?.id}`, {
+                const response = await fetch(`/api/reviews/${reviewId}?userId=${user.id}`, {
                     credentials: 'include'
                 });
                 const result = await response.json();
@@ -79,6 +83,7 @@ export default function ReportPage() {
 
                 setReview(result.review);
             } catch (err: any) {
+                console.error('[Report] Error fetching review:', err);
                 setError(err.message);
             } finally {
                 setLoading(false);
@@ -86,7 +91,7 @@ export default function ReportPage() {
         }
 
         fetchReview();
-    }, [reviewId]);
+    }, [reviewId, user]);
 
     const getScoreBandColor = (band: string | undefined | null) => {
         if (!band) return 'bg-[#6B778C] text-white';

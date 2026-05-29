@@ -185,15 +185,22 @@ export default function OnboardingPage() {
             // Refresh AuthContext session to ensure it has the latest phone number
             const refreshed = await refreshSession();
 
+            if (!refreshed) {
+                toast.error("Failed to refresh session. Please try logging in again.");
+                setIsVerifyingOtp(false);
+                return;
+            }
+
             // Log the updated user object to see the structure
             const { data: userData } = await insforge.auth.getCurrentUser();
 
             toast.success("Phone verified successfully!");
 
             // Redirect to dashboard after session refresh
+            // Give AuthContext a moment to update the user state
             setTimeout(() => {
                 router.push("/dashboard");
-            }, 500);
+            }, 800);
         } catch (err: any) {
             console.error("Failed to verify OTP:", err);
 

@@ -99,13 +99,17 @@ export default function DashboardPage() {
     }, [showUserMenu]);
 
     const fetchReviews = async () => {
+        if (!user?.id) {
+            return;
+        }
+
         try {
             // Create new abort controller if one doesn't exist
             if (!abortControllerRef.current) {
                 abortControllerRef.current = new AbortController();
             }
 
-            const res = await fetch(`/api/reviews?userId=${user?.id}`, {
+            const res = await fetch(`/api/reviews?userId=${user.id}`, {
                 credentials: 'include',
                 signal: abortControllerRef.current.signal
             });
@@ -145,13 +149,17 @@ export default function DashboardPage() {
     };
 
     const fetchRewrites = async () => {
+        if (!user?.id) {
+            return;
+        }
+
         try {
             // Reuse the same abort controller
             if (!abortControllerRef.current) {
                 abortControllerRef.current = new AbortController();
             }
 
-            const res = await fetch(`/api/rewrites?userId=${user?.id}`, {
+            const res = await fetch(`/api/rewrites?userId=${user.id}`, {
                 credentials: 'include',
                 signal: abortControllerRef.current.signal
             });
@@ -194,8 +202,13 @@ export default function DashboardPage() {
     };
 
     const handleDownloadRewrite = async (rewriteId: string, deliverablePath: string) => {
+        if (!user?.id) {
+            toast.error('User not authenticated');
+            return;
+        }
+
         try {
-            const response = await fetch(`/api/rewrites/download?userId=${user?.id}&path=${encodeURIComponent(deliverablePath)}`);
+            const response = await fetch(`/api/rewrites/download?userId=${user.id}&path=${encodeURIComponent(deliverablePath)}`);
             if (response.ok) {
                 const { downloadUrl } = await response.json();
                 window.open(downloadUrl, '_blank');
